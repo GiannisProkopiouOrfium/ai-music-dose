@@ -222,8 +222,8 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
   <p class="eyebrow">ICASSP 2027 &middot; submission</p>
   <h1>Label-free is not<br>zero-shot.</h1>
   <p class="lede">
-    A published AI-music detector reports AUC&nbsp;0.94 without ever seeing a fake
-    label. Take the generated audio out of its dictionary and it does not merely
+    A published AI-music detector reports AUC&nbsp;0.94 on SONICS without ever seeing
+    a fake label. Take the generated audio out of its dictionary and it does not merely
     weaken &mdash; it <span class="swap" id="heroWord">inverts</span>. About fifty tracks
     in six thousand four hundred is the whole difference.
   </p>
@@ -326,6 +326,28 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
       </caption>
     </table>
   </div>
+
+  <div class="col">
+    <p>
+      <strong>What it does not do.</strong> Three things, stated here rather than left
+      to the paper's limitations. It <em>assumes a strided transposed-convolution
+      decoder</em>: a synthesiser built without one leaves no comb to find, and this
+      detector will miss it. It is <em>defeated by pitch shifting</em>, which resamples
+      and moves the spacing off all six candidate frequencies, driving the score below
+      chance at <span class="num">0.4665</span> &mdash; a signed inversion, not a
+      degradation. And <em>it does not detect Udio</em>: three statistics agree Udio
+      leaves no comb inside these 16&nbsp;kHz benchmarks' band, so what the calibration
+      buys there is a miss rather than an inversion, which is a smaller and different
+      thing.
+    </p>
+    <p>
+      It also costs almost nothing to run: <span class="num">378</span> audio-seconds
+      per second on four CPU cores, within 3% of the uncalibrated comb statistic,
+      against 8.13&nbsp;M trainable parameters for a learned competitor. The random-decoy
+      version of the same idea costs 2.4&times; more, because it recomputes one
+      autocorrelation per decoy set.
+    </p>
+  </div>
 </section>
 
 <section>
@@ -366,12 +388,15 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
 
   <div class="col">
     <p>
-      The transition is a switch, not a ramp, and it is visible only because every
-      cell was run at three seeds. With twenty atoms, either enough generated audio
-      is present for the factorisation to spend one atom on the decoder comb or it
-      is not. The seed standard deviation is therefore not noise: it peaks
-      <em>at</em> the transition and collapses immediately after. <strong>The error
-      bar is the transition width.</strong>
+      On SONICS the transition is a switch, not a ramp, and it is visible only
+      because every cell was run at three seeds. FakeMusicCaps is different: it never
+      inverts, it climbs smoothly, and what changes below about 5% contamination is
+      the spread across draws rather than the regime. One reading of the SONICS switch
+      is an atom budget, twenty atoms being enough to spend one on the decoder comb
+      only once enough generated audio is present; we have not separated that from
+      initialisation and local optima. The seed standard deviation is not noise
+      either way: it peaks <em>at</em> the transition and collapses immediately after.
+      <strong>The error bar is the transition width.</strong>
     </p>
   </div>
 </section>
@@ -396,7 +421,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
       <span class="tag">Comb statistic &middot; ours, 0 parameters</span>
       <div class="score">0.9177 / 0.7546</div>
       <span class="tag">FakeMusicCaps / SONICS, two-sided</span>
-      <p>Genuinely training-free. Every deployment figure below comes from this arm.</p>
+      <p>Genuinely training-free. The baseline the proposed detector is measured against.</p>
     </div>
   </div>
 </section>
@@ -490,7 +515,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
       belongs to. We report it as unresolved.
     </p>
     <p class="note">
-      This is the seventh claim the project has had to withdraw, and it was
+      This is one of the claims the project has had to withdraw, and it was
       caught by running the null a referee would have run. The rule that made
       the count impressive &mdash; admitting sub-multiples &mdash; is the same
       rule that destroyed its power to attribute. What survives on both corpora
@@ -509,12 +534,12 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
       On the uncontrolled SONICS corpus a single high-frequency floor statistic
       &mdash; nothing but the delivery chain &mdash; reaches signed AUC
       <span class="num">0.9842</span>, correctly oriented on all five generator
-      families. Matching the chain removes it, and costs our own detector
+      families. Matching the chain removes it, and costs our own comb arm
       <span class="num">0.217</span> AUC, which we report against ourselves.
     </p>
     <p>
-      At a <span class="num">4.7%</span> false-positive rate the detector recalls
-      <span class="num">67.4%</span> of generated tracks, which at a 1% base rate of
+      At a <span class="num">4.7%</span> false-positive rate the dictionary score on
+      SONICS recalls <span class="num">67.4%</span> of generated tracks, which at a 1% base rate of
       AI music is a precision of <span class="num">0.127</span> &mdash; nearly seven
       false accusations for every correct one. Thresholding on in-corpus real music
       and applying that threshold to unseen real music moves the false-positive rate
@@ -555,14 +580,15 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
 </section>
 
 <section>
-  <p class="eyebrow">The code &middot; three commands reproduce the argument</p>
+  <p class="eyebrow">The code &middot; four commands reproduce the argument</p>
   <h2>Run it</h2>
   <div class="col">
     <p>
       Twenty-eight live scripts; everything superseded is archived rather than
       deleted, because several superseded scripts produced numbers that are still
-      cited &mdash; including retracted ones kept on purpose. The three commands
-      below differ in <em>one flag</em>, and that flag is the paper.
+      cited &mdash; including retracted ones kept on purpose. The first three differ
+      in <em>one flag</em>, and that flag is the paper; the fourth is the proposed
+      detector, which fits nothing.
     </p>
   </div>
 
@@ -616,6 +642,31 @@ cd icassp &amp;&amp; latexmk -pdf paper.tex</pre>
       <p class="after">
         Labels build the fit set at a known contamination fraction; the estimator
         never receives one.
+      </p>
+    </div>
+
+    <div class="run">
+      <div class="run-head">
+        <span class="what">The proposed detector</span>
+        <span class="yields">&rarr; AUC 0.9445 / 0.8286</span>
+      </div>
+      <pre>python scripts/eval_comb_detector.py \
+  --manifest data/processed/canonical_fmc_raw16/canonical_manifest.csv \
+  --out-dir reports/diagnostics/comb_fmc_HNULL \
+  --per-stratum 0 --workers 4 --max-duration 9 --level-match \
+  --resample-hz 0 --smooth-bins 5 --residual median --average db \
+  --f-min 1000 --hull-clip-db 0 --span-duration 4 \
+  <span class="flag">--n-harm 2 4 --null-priors 0</span> --operator-grid
+
+python scripts/derive_analytic_null.py \
+  --score-csv reports/diagnostics/comb_fmc_HNULL/comb_per_track_*.csv \
+  --out-csv  reports/diagnostics/comb_fmc_HNULL/analytic_null.csv</pre>
+      <p class="after">
+        <code>--null-priors 0</code> is the point: the null is enumerated, not drawn,
+        so there is no seed to record. The score is
+        <code>comb_priormax4_hmargin</code>, and the <code>*_zeroatom.csv</code> beside
+        it reports what fraction of margins are exactly 0 &mdash; 0.0000 here, 0.1952
+        for the decoy form.
       </p>
     </div>
   </div>

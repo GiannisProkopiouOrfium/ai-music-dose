@@ -72,7 +72,8 @@
   Theodoros Giannakopoulos$^{4}$ \quad
   Themos Stafylakis$^{1,5}$}}
 \address{%
-  $^1$Athens University of Economics and Business, Athens, Greece \\
+  $^1$Athens University of Economics and Business, Athens, Greece \qquad
+  {\small\texttt{gian.prokopiou@aueb.gr}} \\
   $^2$Orfium, Athens, Greece \qquad
   $^3$Hellenic Mediterranean University, Rethymno, Greece \\
   $^4$NCSR ``Demokritos'', Athens, Greece \qquad
@@ -127,8 +128,7 @@ what that buys: they classify the binary task as one-class rather than zero-shot
 and record as a limitation ``the need for a sufficiently large sample collection
 for a synthetic class to detect it (otherwise, it is treated as noise and thus as
 real)''. Their title and conclusion nonetheless frame the method as zero-shot,
-and it is that reading a deployer inherits. What neither supplies is a
-number. The dictionary is learned from a matrix that \emph{contains the corpus
+and it is that reading a deployer inherits. Neither supplies a number. The dictionary is learned from a matrix that \emph{contains the corpus
 being scored}, which is by construction majority generated audio, so the
 estimator is transductive and the open question is its \emph{dose}. It is small,
 it is sharp, and on SONICS it separates an inverted score from a working one.
@@ -260,12 +260,17 @@ Both corpora are channel-matched first: every track, real or generated, is
 %      CORRECTED: this sentence previously read "resampled to 16 kHz" for both,
 %      which contradicted F=4779 below -- that dimension is only reachable at
 %      24 kHz. The matching is WITHIN a corpus, which is what the argument needs.
+% src: audio_preprocessing.CANONICAL_TARGET_LUFS = -23.0 (EBU R128); chain_kbps
+%      64 on canonical_sonics_chain, 0 on canonical_fmc_raw16 (ledger F3).
+%      CORRECTED 2026-09-22: this sentence read "-14 LUFS", which is the streaming
+%      target, not the one the pipeline uses; and it omitted the MP3 stage entirely.
 decoded, resampled to one rate per corpus ($16$\,kHz on FakeMusicCaps, $24$\,kHz
-on SONICS), loudness-normalised to $-14$\,LUFS (loudness
-units relative to full scale) and capped
-at a common duration ($9$\,s on FakeMusicCaps, $120$\,s on SONICS), matched over
-the full corpus rather than a split; \S\ref{sec:confounds} shows why that is not
-optional. SONICS supplies three Suno \texttt{chirp} and two Udio families against
+on SONICS), loudness-normalised to $-23$\,LUFS (loudness units relative to full
+scale) and capped at a common duration ($9$\,s and $120$\,s), matched over the full
+corpus rather than a split. SONICS additionally passes a shared MP3 stage at
+$64$\,kb/s, the fake class's own delivery format and the origin of that corpus's
+$7.35$\,kHz band edge; FakeMusicCaps needs none, both its classes already sharing a
+format. \S\ref{sec:confounds} shows why this is not optional. SONICS supplies three Suno \texttt{chirp} and two Udio families against
 $6{,}361$ reals;
 FakeMusicCaps supplies MusicGen, AudioLDM2, MusicLDM, Mustango and Stable Audio Open
 against $5{,}355$.
@@ -273,8 +278,8 @@ against $5{,}355$.
 \subsection{Held-out dictionary evaluation}
 \label{ssec:holdout}
 A track in the fit set is reconstructed through atoms it helped create, so its
-$r_i$ is inflated; if the fit reals are also the scored reals, real music scores
-higher and the AUC inverts for reasons unrelated to generated audio. On
+$r_i$ is inflated; if the fit reals are also the scored reals, the AUC inverts for
+reasons unrelated to generated audio. On
 % src: nmf_fmc_fitreals/ (leaked) vs nmf_fmc_curve_FINAL/ 0% cell (held out)
 FakeMusicCaps the same quantity reads $0.167$ when the $600$ fit reals are
 $100\%$ of the scored reals and $0.744 \pm 0.020$ over the full corpus with
@@ -288,8 +293,8 @@ object needs it, and its absence is invisible in the score distribution.
 
 \begin{table}[t]
 \centering
-\caption{The published protocol against what a deployer can do. Signed macro AUC,
-full corpus, $K{=}20$, full resolution; deployer rows are held out over three draws.
+\caption{The published protocol against what a deployer can do. Signed macro AUC
+(intervals and tests in \S\ref{sec:detector} are \emph{pooled}), full corpus, $K{=}20$, full resolution; deployer rows are held out over three draws.
 The last three rows learn no dictionary; both calibrated rows are correctly oriented
 on all ten families, and only the last needs no random draw (\S\ref{sec:detector}).}
 \label{tab:boundary}
@@ -326,9 +331,10 @@ whereas SONICS \emph{inverts}, real music scoring higher than generated; we say
 inductive dictionary ($0.5733$) is \emph{worse} than the reals-only one, so
 contamination appears to need a generator match
 % src: dict_{sparse,kmeans}_{fmc,sonics}_{pooled,reals}/nmf_peak_auc_lvl.csv --
-% released, not quoted: those cells predate \S\ref{ssec:holdout}'s correction.
-(\S\ref{sec:conc}). The collapse is not specific to NMF: $\ell_1$ sparse coding
-and $k$-means atoms reproduce it on both corpora.
+% l1 sparse coding and k-means atoms reproduce the collapse on both corpora.
+% Released rather than quoted: those cells predate \S\ref{ssec:holdout}'s correction,
+% and the sentence was cut for space, not withdrawn.
+(\S\ref{sec:conc}).
 
 \subsection{The dose}
 \label{ssec:dose}
@@ -348,12 +354,11 @@ artefact of averaging draws on opposite sides of a transition.
 \textbf{Around $50$ generated tracks in a $6{,}400$-track dictionary separate an
 inverted detector from a working one}, which puts a number on the ``sufficiently
 large sample collection'' of \cite{afchar2026finding}: $0.7\%$ of the unlabelled
-set, and a threshold rather than a gradual requirement. The reading is that the
-factorisation can or cannot afford one of its $K$ atoms for the
+set, and a threshold rather than a gradual requirement. One reading is an atom
 % src: nmf_sonics_K{5,10,40}_knee/nmf_peak_auc_lvl.csv, 3 seeds, bins4779
-comb, and the atom budget tests it: the flipping dose falls monotonically as $K$
-grows, from $168$--$341$ tracks at $K{=}5$ to ${\approx}47$ at $K{=}20$, with
-$K{=}40$ already flipped at the smallest dose sampled.
+budget: consistent with it, the flipping dose falls monotonically from $168$--$341$
+tracks at $K{=}5$ to ${\approx}47$ at $K{=}20$. We do not separate that reading from
+initialisation and local optima.
 
 Below ${\approx}5\%$ contamination on FakeMusicCaps one generator swings $0.21$
 % src: nmf_fmc_curve_FINAL/nmf_peak_auc_lvl.csv, per-generator spread over seeds
@@ -367,9 +372,8 @@ deployer gets an unpredictable detector, not merely a worse one.
 \noindent\textbf{The delivery chain is a detector.} On the uncontrolled SONICS
 % src: channel_sonics_UNCONTROLLED/, channel_sonics_chain_120s/ (ledger F6)
 corpus one high-frequency floor statistic reaches signed AUC $0.98$, correctly
-oriented on all five families; chain matching takes it to $0.60$, and costs the
-comb arm on that corpus $0.217$ ($0.84 \!\to\! 0.63$). Every value below is
-measured after that chain.
+oriented on all five families; chain matching takes it to $0.60$ and costs the comb
+arm $0.217$ on that corpus. Every value below is measured after that chain.
 
 \noindent\textbf{Signed AUC.} Reporting $|$AUC$|$ per generator inflated the comb
 % src: comb_sonics_fmin{200,500,1000}/comb_auc_*.csv (signed and abs columns)
@@ -393,9 +397,10 @@ failed between-class ordering, not lost sensitivity within a family
 \noindent\textbf{Two-sided real-only scoring.} Because some families invert we
 % src: fusion_fmc_twosided/, nmf_sonics_twosided/, fusion_sonics_FULL_rs15k_* (F1)
 adopt \cite{zisman2026realstats}'s real-only two-sided deviation
-$|x - \mathrm{med}| / \mathrm{IQR}$, with IQR the interquartile range. Over four arm-by-corpus cells it costs
-$0.005$/$0.018$ where no family inverts and gains $0.068$/$0.022$ where one does,
-DeLong \cite{delong1988comparing} $p = 3.1 \times 10^{-57}$.
+$|x - \mathrm{med}| / \mathrm{IQR}$, IQR being the interquartile range. Over four
+arm-by-corpus cells it costs $0.005$--$0.018$ where no family inverts and gains
+$0.022$--$0.068$ where one does (DeLong \cite{delong1988comparing}
+$p = 3.1 \times 10^{-57}$).
 
 \noindent\textbf{Confound gates.} Every reported number carries an eleven-gate
 battery, released in full with the code: channel, level, duration, silence, label
@@ -423,19 +428,18 @@ proposed score.
 The
 comb's spacing is an architecture constant, not a data property
 \cite{pons2021upsampling,odena2016deconvolution}, but its \emph{width} is set by
-the analysis resolution, and both benchmarks are \emph{distributed} at
-$16$\,kHz, so nothing survives above $8$\,kHz whatever container rate the chain of
-\S\ref{sec:method} uses; \cite{afchar2026finding} cites that cutoff as unsuited
-and a reason to work at $44.1$\,kHz instead.
+the analysis resolution, and both benchmarks are \emph{distributed} at $16$\,kHz, so
+nothing survives above $8$\,kHz whatever the container rate of
+\S\ref{sec:method} uses, which \cite{afchar2026finding} cites as a reason to work at
+$44.1$\,kHz instead.
 % src: nmf_{fmc,sonics}_FULL/nmf_peak_auc_lvl.csv, bins7167 / bins4779
 With the band re-derived for the lower rate the method reaches
 Table~\ref{tab:boundary}'s headline, so the cutoff is survivable and this family can
 be evaluated on the corpora the field actually uses. Their published descriptor
 transfers essentially unchanged: at its $4458$ dimensions we measure $0.9891$ and
 % src: nmf_{fmc,sonics}_binsweep/nmf_peak_auc_lvl.csv, bins4458/2600/1500/1000/445
-$0.9386$, and at their physical resolution (${\approx}2.7$\,Hz per bin) $0.9878$
-and $0.9293$, at most $0.010$ either way; coarser binds, $0.9457$/$0.8368$ at $445$
-bins. The requirement is a resolution, not a dimension, re-derived when the sample
+$0.9386$, and at their physical resolution (${\approx}2.7$\,Hz per bin) within
+$0.010$ of that; coarser binds, $0.9457$/$0.8368$ at $445$ bins. The requirement is a resolution, not a dimension, re-derived when the sample
 rate changes.
 \noindent\textbf{What the atoms are, and what the score fires on.} Counting an
 % src: reports/figures/nmf_{fmc,sonics}_periodicity/atom_peakiness.csv
@@ -451,8 +455,8 @@ $85$--$99\%$ of tracks against $19\%$ for real music, at $49.8$\,Hz for MusicGen
 \cite{copet2023musicgen}, $99.6$ for the three HiFi-GAN \cite{kong2020hifigan}
 vocoders, $21.5$ for Stable Audio Open \cite{evans2024stableaudio}, and $49.8$ for
 all three Suno families, whose $399.902$\,Hz comb is therefore its eighth harmonic.
-Suno's decoder is proprietary and did not inform the candidate set, so that is
-attribution on a held-out architecture.
+Suno's decoder is proprietary and did not inform the candidate set: attribution on a
+held-out architecture.
 
 % =============================================================================
 \section{A detector with no fit set}
@@ -465,22 +469,24 @@ $\max_{\tau \ge \tau_0} \rho_e(\tau)$, $\rho_e(\tau) = \sum_f e_f e_{f+\tau} /
 FakeMusicCaps and $0.6864$/$0.7546$ (one-/two-sided) on SONICS, above the
 dictionary method's held-out figures (Table~\ref{tab:boundary}), but does not
 escape the sign problem so much as relocate it: it inverts on the two Udio families
-(\S\ref{sec:confounds}), which is why we quote the two-sided form. Having no
-dictionary removes the protocol dependence, not the generator dependence.
+(\S\ref{sec:confounds}), which is why we quote the two-sided form. No dictionary
+means no protocol dependence, not no generator dependence.
 
 \noindent\textbf{The prior, and the null.} That dependence is avoidable, and
 cheaply. The spacing is $f_s/\prod_l s_l$, and the stride products of published
 decoders form a small enumerable set, so the search over $\tau$ can be restricted
 to a prior $\mathcal{P}$ of lags a real decoder could produce: six fundamentals spanning
 $21.5$--$100$\,Hz and their first four multiples above a $40$\,Hz floor.
-Restriction alone helps, since the maximum of a noisy autocorrelation over $K$ lags
-grows as $\sigma\sqrt{2\ln K}$; but the restricted score still inherits each track's
+Restriction alone helps, the maximum of a noisy autocorrelation over $K$ lags
+growing heuristically as $\sigma\sqrt{2\ln K}$; but the restricted score still inherits each track's
 residual statistics, and Udio's residual is \emph{flatter} than real music's, which
 inverts it. So we subtract a null $\mathcal{N}$ read on the same residual,
 $\max_{\tau \in \mathcal{P}}\rho_e(\tau) - \max_{\tau \in \mathcal{N}}\rho_e(\tau)$, and the track's own
-smoothness cancels. \emph{Which} null is the detector. $\mathcal{N}$ is every lag in $[40, 600]$\,Hz
-except $\pm 1$ bin around $k\Delta$, for each candidate spacing $\Delta$ and
-\emph{every} integer $k$: $441$ lags on FakeMusicCaps, $253$ on SONICS. Deleting
+smoothness cancels. \emph{Which} null is the detector. Lags are bins and spacings are
+hertz, so with $b$ the bin width, $\mathcal{N} = \{\tau : 40 \le \tau b \le 600\}
+\setminus \bigcup_{\Delta, k}\{\mathrm{round}(k\Delta/b) \pm 1\}$, the union over
+the six fundamentals $\Delta$ and \emph{every} integer $k$: $441$ lags on
+FakeMusicCaps, $253$ on SONICS. Deleting
 % src: tests/test_null_alternatives.py fixture (ledger R27.38)
 only $\mathcal{P}$ leaves the comb's own higher teeth inside $\mathcal{N}$ and the score subtracts its
 own evidence, reading $-0.128$ on a clean synthetic $50$\,Hz comb against $+0.511$
