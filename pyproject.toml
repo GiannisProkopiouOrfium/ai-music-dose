@@ -1,0 +1,413 @@
+[tool.poetry]
+name = "intrinsic-ai-music-detection"
+version = "0.1.0"
+description = "Intrinsic Dimension Estimation for Detecting AI-Generated Music via Persistent Homology"
+authors = ["Giannis Prokopiou <giannis.prokopiou@orfium.com>"]
+readme = "README.md"
+packages = [{include = "intrinsic_ai_music_detection", from = "src"}]
+
+[tool.poetry.dependencies]
+# NOTE: relaxed from >=3.11 to >=3.10 because every experiment to date has run
+# successfully on Python 3.10.9 (the only interpreter actually available on the
+# EC2 box); the >=3.11 constraint just made `poetry run`/`poetry install` reject
+# the real working environment while direct `python` invocations succeeded.
+python = ">=3.10,<3.14"
+
+# Core math / ML
+numpy = ">=2.0"
+scipy = ">=1.14"
+scikit-learn = ">=1.5"
+scikit-dimension = ">=0.3"
+
+# Deep learning & audio
+torch = ">=2.1"
+torchaudio = ">=2.1"
+transformers = ">=4.36"
+librosa = ">=0.10"
+encodec = ">=0.1"
+soxr = ">=0.3"
+
+# Data / IO
+pandas = ">=2.1"
+h5py = ">=3.10"
+boto3 = ">=1.34"
+pyyaml = ">=6.0"
+click = ">=8.1"
+python-dotenv = ">=1.0"
+
+# Visualization
+matplotlib = ">=3.8"
+seaborn = ">=0.13"
+
+# Utilities
+tqdm = ">=4.66"
+huggingface-hub = ">=0.20"
+
+# Audio preprocessing
+pyloudnorm = ">=0.1"
+
+# Temporal sequence modelling
+hmmlearn = ">=0.3"
+ruptures = ">=1.1"
+
+[tool.poetry.group.dev.dependencies]
+black = ">=23.3.0"
+pylint = ">=2.17.4"
+pre-commit = ">=3.3.1"
+jupyterlab = ">=4.0.0"
+mypy = ">=1.4.1"
+pytest = ">=7.4"
+
+[tool.poetry.group.clap]
+optional = true
+
+[tool.poetry.group.clap.dependencies]
+laion-clap = "^1.1"
+
+[tool.poetry.group.fst]
+optional = true
+
+[tool.poetry.group.fst.dependencies]
+pytorch-lightning = ">=2.0"
+torchmetrics = ">=1.0"
+
+[tool.poetry.group.muq]
+optional = true
+
+[tool.poetry.group.muq.dependencies]
+muq = ">=0.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+# Make `python -m pytest tests/` work from a bare checkout (e.g. a freshly
+# `git pull`-ed EC2 box) without an editable install or a PYTHONPATH export --
+# otherwise collection fails with ModuleNotFoundError on the src/ layout.
+pythonpath = ["src"]
+
+[tool.mypy]
+exclude = ".*/migrations/"
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+disable_error_code = "misc"
+show_error_codes = true
+namespace_packages = true
+strict_optional = false
+disallow_untyped_defs = true
+
+[tool.isort]
+line_length = 120
+multi_line_output = 3
+include_trailing_comma = 'True'
+known_first_party='lumi'
+force_grid_wrap=0
+combine_as_imports='True'
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version_provider = "poetry"
+update_changelog_on_bump = true
+
+[tool.flakeheaven.plugins]
+pyflakes = ["+*"]
+pycodestyle = ["+*", "-E203", "-E266", "-E501", "-W503"]
+
+[tool.flakeheaven.exceptions."**/__init__.py"]
+pyflakes = ["-F401"] # Unused imports in __init__.py
+
+[tool.pycodestyle]
+max-line-length = 120
+exclude = [".tox", ".git", "*/migrations/*", "*/static/CACHE/*", "docs", "node_modules"]
+
+[tool.pylint.master]
+ignore = ["migrations", "settings", "manage.py"]
+persistent = "no"
+jobs = 1
+unsafe-load-any-extension = "no"
+extension-pkg-whitelist = []
+optimize-ast = "no"
+
+[tool.pylint.messages_control]
+confidence = []
+disable = "all"
+enable = ["import-error",
+    "relative-import",
+    "reimported",
+    "deprecated-module",
+    "unpacking-non-sequence",
+    "used-before-assignment",
+    "global-variable-undefined",
+    "redefine-in-handler",
+    "undefined-loop-variable",
+    "global-at-module-level",
+    "bad-open-mode",
+    "redundant-unittest-assert",
+    "boolean-datetime",
+    "deprecated-method",
+    "anomalous-unicode-escape-in-string",
+    "abstract-class-instantiated",
+    "star-needs-assignment-target",
+    "duplicate-argument-name",
+    "nonlocal-and-global",
+    "return-arg-in-generator",
+    "invalid-star-assignment-target",
+    "bad-reversed-sequence",
+    "init-is-generator",
+    "confusing-with-statement",
+    "unnecessary-lambda",
+    "pointless-string-statement",
+    "unnecessary-pass",
+    "unreachable",
+    "using-constant-test",
+    "bad-super-call",
+    "missing-super-argument",
+    "slots-on-old-class",
+    "super-on-old-class",
+    "property-on-old-class",
+    "not-an-iterable",
+    "not-a-mapping",
+    "bad-format-character",
+    "bad-format-string-key",
+    "bad-format-string",
+    "missing-format-attribute",
+    "invalid-format-index",
+    "mixed-indentation",
+    "lowercase-l-suffix",
+    "invalid-encoded-data",
+    "unpacking-in-except",
+    "import-star-module-level",
+    "long-suffix",
+    "old-octal-literal",
+    "old-ne-operator",
+    "backtick",
+    "old-raise-syntax",
+    "dict-iter-method",
+    "dict-view-method",
+    "raising-string",
+    "using-cmp-argument",
+    "cmp-method",
+    "coerce-method",
+    "delslice-method",
+    "getslice-method",
+    "hex-method",
+    "nonzero-method",
+    "t-method",
+    "setslice-method",
+    "logging-format-truncated",
+    "logging-unsupported-format",
+    "logging-format-interpolation",
+    "invalid-unary-operand-type",
+    "unsupported-binary-operation",
+    "not-callable",
+    "redundant-keyword-arg",
+    "assignment-from-no-return",
+    "assignment-from-none",
+    "not-context-manager",
+    "repeated-keyword",
+    "missing-kwoa",
+    "no-value-for-parameter",
+    "invalid-sequence-index",
+    "invalid-slice-index",
+    "unexpected-keyword-arg",
+    "unsupported-membership-test",
+    "unsubscriptable-object",
+    "access-member-before-definition",
+    "method-hidden",
+    "assigning-non-slot",
+    "no-method-argument",
+    "no-self-argument",
+    "unexpected-special-method-signature",
+    "non-iterator-returned",
+    "arguments-differ",
+    "bad-staticmethod-argument",
+    "non-parent-init-called",
+    "bad-except-order",
+    "catching-non-exception",
+    "bad-exception-context",
+    "raising-bad-type",
+    "raising-non-exception",
+    "misplaced-bare-raise",
+    "broad-except",
+    "nonstandard-exception",
+    "not-async-context-manager",
+]
+
+[tool.pylint.reports]
+output-format = "colorized"
+files-output = "no"
+reports = "no"
+msg-template = '[{msg_id} {symbol}] {msg} File: {path}, line {line}, in {obj}'
+
+[tool.pylint.logging]
+logging-modules = "logging"
+
+[tool.pylint.format]
+max-line-length = 120
+ignore-long-lines='^\s*(# )?<?https?://\S+>?$'
+single-line-if-stmt = "no"
+no-space-check = ["trailing-comma", "dict-separator"]
+max-module-lines = 1000
+indent-string = '    '
+indent-after-paren = 4
+expected-line-ending-format = "LF"
+
+[tool.pylint.typecheck]
+ignore-mixin-members = "yes"
+ignored-classes = "DictField"
+
+[tool.pylint.variables]
+init-import = "no"
+dummy-variables-rgx = "_$|dummy"
+callbacks = ["cb_", "_cb"]
+
+[tool.pylint.similarities]
+min-similarity-lines = 4
+ignore-comments = "yes"
+ignore-docstrings = "yes"
+ignore-imports = "no"
+
+[tool.pylint.spelling]
+spelling-store-unknown-words = "no"
+
+[tool.pylint.miscellaneous]
+notes = ["FIXME", "XXX", "TODO"]
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "Run", "_"]
+bad-names = ["foo", "bar", "baz", "toto", "tutu", "tata"]
+include-naming-hint = "no"
+function-rgx = "[a-z_][a-z0-9_]{2,30}$"
+function-name-hint = "[a-z_][a-z0-9_]{2,30}$"
+variable-rgx = "[a-z_][a-z0-9_]{2,30}$"
+variable-name-hint = "[a-z_][a-z0-9_]{2,30}$"
+const-rgx = "(([A-Z_][A-Z0-9_]*)|(__.*__))$"
+const-name-hint = "(([A-Z_][A-Z0-9_]*)|(__.*__))$"
+attr-rgx = "[a-z_][a-z0-9_]{2,30}$"
+attr-name-hint = "[a-z_][a-z0-9_]{2,30}$"
+argument-rgx = "[a-z_][a-z0-9_]{2,30}$"
+argument-name-hint = "[a-z_][a-z0-9_]{2,30}$"
+class-attribute-rgx = "([A-Za-z_][A-Za-z0-9_]{2,30}|(__.*__))$"
+class-attribute-name-hint = "([A-Za-z_][A-Za-z0-9_]{2,30}|(__.*__))$"
+inlinevar-rgx = "[A-Za-z_][A-Za-z0-9_]*$"
+inlinevar-name-hint = "[A-Za-z_][A-Za-z0-9_]*$"
+class-rgx = "[A-Z_][a-zA-Z0-9]+$"
+class-name-hint = "[A-Z_][a-zA-Z0-9]+$"
+module-rgx = "(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$"
+module-name-hint = "(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$"
+method-rgx = "[a-z_][a-z0-9_]{2,30}$"
+method-name-hint = "[a-z_][a-z0-9_]{2,30}$"
+no-docstring-rgx = "^_"
+docstring-min-length = -1
+
+[tool.pylint.elif]
+max-nested-blocks = 5
+
+[tool.pylint.imports]
+deprecated-modules = ["regsub", "TERMIOS", "Bastion", "rexec"]
+
+[tool.pylint.design]
+max-args = 5
+ignored-argument-names = "_.*"
+max-locals = 15
+max-returns = 6
+max-branches = 12
+max-statements = 50
+max-parents = 7
+max-attributes = 7
+min-public-methods = 2
+max-public-methods = 20
+max-bool-expr = 5
+
+[tool.pylint.classes]
+defining-attr-methods = ["__init__", "__new__", "setUp"]
+valid-classmethod-first-arg = "cls"
+valid-metaclass-classmethod-first-arg = "mcs"
+exclude-protected = ["_asdict", "_fields", "_replace", "_source", "_make"]
+
+[tool.pylint.exceptions]
+overgeneral-exceptions = "Exception"
+
+[tool.ruff]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+select = ["A001", "PLW0406", "F404", "PLE0604", "F822", "B023", "PLW0602", "PLW0603", "W605", "F701", "F702", "PLE0116", "PLE0101", "F622", "F706", "B002", "F704", "PLE0117", "B012", "F631", "B006", "F601", "PLW0120", "B018", "PGH001", "S102", "B018", "F502", "F501", "F524", "F506", "F524", "PLE1310", "F522", "F525", "F524", "E703", "PLE1206", "PLE1205", "F901", "B014", "PLW0711", "E722", "PLE1700"]
+ignore = []
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]
+unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+# Same as Black.
+line-length = 120
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Assume Python 3.10.
+target-version = "py310"
+
+[tool.ruff.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[tool.bandit]
+exclude_dirs = [".venv", "venv"]
+# Three checks are skipped, each for a stated reason rather than to silence noise:
+#   B324  hashlib MD5 -- used for CACHE KEYS (features/cache_keys.py and the
+#         scripts that mirror it), never for authentication or integrity. 221 of
+#         the findings are this one call site pattern.
+#   B301  pickle -- only ever loads flow checkpoints this project wrote itself,
+#         from paths under data/processed/ on our own box.
+#   B310  urllib urlopen -- dataset acquisition from fixed, literal https URLs
+#         (SONICS, FMA); no user-supplied schemes reach it.
+skips = ["B324", "B301", "B310"]

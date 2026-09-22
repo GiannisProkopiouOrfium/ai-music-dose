@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this code or the measurements in it, please cite the paper below."
+title: "Label-Free or Zero-Shot? The Transductive Dose of an AI-Music Detector, and a Detector Without One"
+abstract: >-
+  Code, confound-gate battery and full provenance record for a study of
+  label-free AI-generated-music detection. Measures the transductive dose a
+  published dictionary-based detector pays, and proposes a training-free,
+  dictionary-free comb detector calibrated against a deterministic harmonic
+  null.
+type: software
+license: MIT
+authors:
+  - family-names: Prokopiou
+    given-names: Ioannis
+    affiliation: "Athens University of Economics and Business; Orfium"
+  - family-names: Vikatos
+    given-names: Pantelis
+    affiliation: "Orfium"
+  - family-names: Kaliakatsos-Papakostas
+    given-names: Maximos
+    affiliation: "Hellenic Mediterranean University"
+  - family-names: Giannakopoulos
+    given-names: Theodoros
+    affiliation: "NCSR Demokritos"
+  - family-names: Stafylakis
+    given-names: Themos
+    affiliation: "Athens University of Economics and Business; Archimedes/Athena R.C."
+keywords:
+  - AI-generated music detection
+  - audio forensics
+  - upsampling artifacts
+  - zero-shot detection
+  - evaluation protocol
+repository-code: "https://github.com/GiannisProkopiouOrfium/ai-music-dose"
+url: "https://giannisprokopiouorfium.github.io/ai-music-dose"

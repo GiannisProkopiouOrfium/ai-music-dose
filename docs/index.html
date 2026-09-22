@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Transductive Dose</title>
+<meta name="description" content="Label-free is not zero-shot: measuring the transductive dose of an AI-music detector, and a detector that pays none.">
+<style>
+/* ==========================================================================
+   Palette is taken from the paper's Figure 1: the two accents ARE the two
+   states the finding is about. Nothing else on the page is allowed to be
+   saturated, so the switch is the only place colour carries meaning.
+   ========================================================================== */
+:root {
+  --inverted: #A8362B;   /* below threshold: the detector is inverted */
+  --working:  #1F5F8B;   /* above threshold: the detector works       */
+  --ground:   #EDEFF0;
+  --surface:  #F8F9FA;
+  --sunk:     #E2E6E8;
+  --ink:      #14181C;
+  --muted:    #5C666D;
+  --rule:     #CDD4D8;
+  --shadow:   0 1px 2px rgba(20, 24, 28, .05), 0 8px 24px rgba(20, 24, 28, .05);
+
+  --serif: "Iowan Old Style", "Charter", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --measure: 34rem;
+  --gap: clamp(2.5rem, 5vw, 4.25rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --inverted: #D8695A;
+    --working:  #74B4DC;
+    --ground:   #101418;
+    --surface:  #171D22;
+    --sunk:     #0A0D10;
+    --ink:      #E3E8EB;
+    --muted:    #8D989F;
+    --rule:     #2C353B;
+    --shadow:   0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"] {
+  --inverted: #D8695A; --working: #74B4DC; --ground: #101418; --surface: #171D22;
+  --sunk: #0A0D10; --ink: #E3E8EB; --muted: #8D989F; --rule: #2C353B;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35);
+}
+:root[data-theme="light"] {
+  --inverted: #A8362B; --working: #1F5F8B; --ground: #EDEFF0; --surface: #F8F9FA;
+  --sunk: #E2E6E8; --ink: #14181C; --muted: #5C666D; --rule: #CDD4D8;
+  --shadow: 0 1px 2px rgba(20,24,28,.05), 0 8px 24px rgba(20,24,28,.05);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 62rem; margin: 0 auto; padding: 0 clamp(1.1rem, 4vw, 2.5rem); }
+.col { max-width: var(--measure); }
+section { padding-block: var(--gap); border-top: 1px solid var(--rule); }
+section:first-of-type { border-top: 0; }
+
+h1, h2, h3 { text-wrap: balance; margin: 0; font-weight: 600; line-height: 1.14; }
+h1 { font-size: clamp(2.3rem, 6.2vw, 3.9rem); letter-spacing: -.022em; }
+h2 { font-size: clamp(1.5rem, 3.2vw, 2rem); letter-spacing: -.014em; margin-bottom: .55rem; }
+h3 { font-size: 1.08rem; letter-spacing: -.005em; margin-bottom: .3rem; }
+p { margin: 0 0 1.05em; }
+p:last-child { margin-bottom: 0; }
+a { color: inherit; text-decoration-color: var(--rule); text-underline-offset: .18em; }
+a:hover { text-decoration-color: currentColor; }
+:focus-visible { outline: 2px solid var(--working); outline-offset: 3px; border-radius: 2px; }
+
+/* Eyebrows carry the project's own identifiers, not decorative numbering. */
+.eyebrow {
+  font-family: var(--mono); font-size: .705rem; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 .7rem;
+}
+.lede { font-size: 1.19rem; color: var(--muted); }
+.note { font-size: .875rem; color: var(--muted); line-height: 1.55; }
+strong { font-weight: 600; }
+code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+code { font-size: .855em; background: var(--sunk); padding: .1em .34em; border-radius: 3px; }
+
+/* --- hero ---------------------------------------------------------------- */
+.hero { padding-block: clamp(3.5rem, 9vw, 6rem) var(--gap); }
+.hero h1 { margin-bottom: 1.1rem; }
+.hero .lede { max-width: 32rem; }
+.swap { color: var(--inverted); }
+.swap.on { color: var(--working); }
+
+/* --- the switch ---------------------------------------------------------- */
+.switch {
+  margin-top: 2.6rem; background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 5px; box-shadow: var(--shadow); overflow: hidden;
+}
+.switch-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1.6rem;
+  padding: 1.05rem 1.35rem; border-bottom: 1px solid var(--rule);
+}
+.switch-head h3 { flex: 1 1 16rem; }
+.readout { display: flex; gap: 1.6rem; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.readout div { text-align: right; }
+.readout .k { display: block; font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.readout .v { font-size: 1.28rem; font-weight: 600; transition: color .28s ease; }
+.switch-body { padding: 1.5rem 1.35rem 1.35rem; }
+
+.axis { position: relative; height: 78px; }
+.axis .chance {
+  position: absolute; top: 0; bottom: 22px; width: 1px; background: var(--rule);
+}
+.axis .chance span {
+  position: absolute; top: -.15rem; left: .4rem; font-family: var(--mono);
+  font-size: .64rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+}
+.axis .track {
+  position: absolute; left: 0; right: 0; top: 44px; height: 2px; background: var(--sunk);
+}
+.dot {
+  position: absolute; top: 37px; width: 16px; height: 16px; margin-left: -8px;
+  border-radius: 50%; border: 2px solid var(--inverted); background: var(--surface);
+  transition: left .5s cubic-bezier(.22,.9,.3,1), border-color .3s ease;
+}
+.dot.on { border-color: var(--working); }
+.mean {
+  position: absolute; top: 30px; width: 2px; height: 30px; margin-left: -1px;
+  background: var(--inverted); transition: left .5s cubic-bezier(.22,.9,.3,1), background .3s ease;
+}
+.mean.on { background: var(--working); }
+.ticks {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex;
+  justify-content: space-between; font-family: var(--mono); font-size: .68rem; color: var(--muted);
+}
+.slider-row { display: flex; align-items: center; gap: 1rem; margin-top: .6rem; }
+input[type="range"] { flex: 1; accent-color: var(--working); height: 1.6rem; cursor: grab; }
+input[type="range"]:active { cursor: grabbing; }
+.dose { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .82rem; color: var(--muted); white-space: nowrap; }
+.verdict {
+  margin-top: 1.1rem; padding-top: .95rem; border-top: 1px dashed var(--rule);
+  font-size: .93rem; min-height: 3.1em;
+}
+.verdict b { color: var(--inverted); font-weight: 600; }
+.verdict.on b { color: var(--working); }
+
+/* --- tables -------------------------------------------------------------- */
+.scroll { overflow-x: auto; margin-block: 1.6rem; }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+caption { caption-side: bottom; padding-top: .8rem; text-align: left; font-size: .82rem; color: var(--muted); line-height: 1.5; }
+th, td { padding: .5rem .85rem; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--rule); }
+th:first-child, td:first-child { text-align: left; white-space: normal; padding-left: 0; }
+thead th { font-size: .69rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); font-weight: 500; }
+tbody td:not(:first-child) { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+tr.rule-top td, tr.rule-top th { border-top: 2px solid var(--ink); }
+.big { font-weight: 600; }
+.inv { color: var(--inverted); }
+
+/* --- two-arm cards ------------------------------------------------------- */
+.arms { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); margin-top: 1.6rem; }
+.arm { background: var(--surface); border: 1px solid var(--rule); border-radius: 5px; padding: 1.15rem 1.25rem; }
+.arm .tag { font-family: var(--mono); font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.arm .score { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1.6rem; font-weight: 600; margin: .35rem 0 .1rem; }
+.arm p { font-size: .875rem; color: var(--muted); margin: .5rem 0 0; }
+
+/* --- run it -------------------------------------------------------------- */
+.runs { display: grid; gap: 1.15rem; margin-top: 1.7rem; }
+.run {
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 5px;
+  overflow: hidden;
+}
+.run-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .9rem;
+  padding: .8rem 1.1rem; border-bottom: 1px solid var(--rule);
+}
+.run-head .what { font-weight: 600; font-size: .97rem; }
+.run-head .yields {
+  font-family: var(--mono); font-size: .68rem; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--muted); margin-left: auto;
+}
+.run pre {
+  margin: 0; padding: .95rem 1.1rem; overflow-x: auto; background: var(--sunk);
+  font-family: var(--mono); font-size: .765rem; line-height: 1.62;
+}
+.run pre .flag { color: var(--working); }
+.run pre .cmt { color: var(--muted); }
+.run .after { padding: .75rem 1.1rem; font-size: .845rem; color: var(--muted); }
+
+/* --- withdrawn ----------------------------------------------------------- */
+.withdrawn { display: grid; gap: 0; margin-top: 1.4rem; }
+.wd { display: grid; grid-template-columns: 4.2rem 1fr; gap: 1.1rem; padding: .95rem 0; border-top: 1px solid var(--rule); }
+.wd:last-child { border-bottom: 1px solid var(--rule); }
+.wd .st { font-family: var(--mono); font-size: .66rem; letter-spacing: .07em; text-transform: uppercase; color: var(--inverted); padding-top: .28em; }
+.wd .claim { font-size: .95rem; }
+.wd .why { font-size: .855rem; color: var(--muted); margin-top: .18rem; }
+
+/* --- rules list ---------------------------------------------------------- */
+ul.rules { list-style: none; padding: 0; margin: 1.3rem 0 0; display: grid; gap: .8rem; }
+ul.rules li { padding-left: 1.5rem; position: relative; font-size: .95rem; }
+ul.rules li::before {
+  content: ""; position: absolute; left: 0; top: .62em; width: .55rem; height: 1px; background: var(--working);
+}
+
+/* --- footer -------------------------------------------------------------- */
+footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
+.links { display: flex; flex-wrap: wrap; gap: .55rem 1.6rem; font-family: var(--mono); font-size: .8rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">ICASSP 2027 &middot; submission</p>
+  <h1>Label-free is not<br>zero-shot.</h1>
+  <p class="lede">
+    A published AI-music detector reports AUC&nbsp;0.94 without ever seeing a fake
+    label. Take the generated audio out of its dictionary and it does not merely
+    weaken &mdash; it <span class="swap" id="heroWord">inverts</span>. About fifty tracks
+    in six thousand four hundred is the whole difference.
+  </p>
+  <p class="lede" style="margin-top:-.4rem">
+    So we propose a detector that never pays that price, because it learns no
+    dictionary at all &mdash; and it is the only score we tested that is correctly
+    oriented on <strong>all ten</strong> generator families, and it needs no random
+    draw anywhere.
+  </p>
+
+  <div class="switch">
+    <div class="switch-head">
+      <h3>The dose, on SONICS</h3>
+      <div class="readout">
+        <div><span class="k">mean AUC</span><span class="v" id="rMean">0.382</span></div>
+        <div><span class="k">seed SD</span><span class="v" id="rSd">0.043</span></div>
+        <div><span class="k">flipped</span><span class="v" id="rFlip">0/3</span></div>
+      </div>
+    </div>
+    <div class="switch-body">
+      <div class="axis" id="axis">
+        <div class="chance" id="chance"><span>chance</span></div>
+        <div class="track"></div>
+        <div class="mean" id="mean"></div>
+        <div class="dot" id="d0"></div>
+        <div class="dot" id="d1"></div>
+        <div class="dot" id="d2"></div>
+        <div class="ticks"><span>0.25</span><span>0.50</span><span>0.75</span><span>1.00</span></div>
+      </div>
+      <div class="slider-row">
+        <label for="dose" class="eyebrow" style="margin:0">Dictionary</label>
+        <input type="range" id="dose" min="0" max="9" value="0" step="1"
+               aria-label="Generated tracks in the dictionary">
+        <span class="dose" id="doseLabel">0 fakes &middot; 0%</span>
+      </div>
+      <p class="verdict" id="verdict"></p>
+    </div>
+  </div>
+  <p class="note" style="margin-top:.9rem">
+    The slider stops only where we measured. Ten dictionary compositions, three
+    seeds each, evaluated held out on all 59,280 tracks &mdash; no interpolation
+    between points.
+  </p>
+</header>
+
+<section>
+  <p class="eyebrow">What we propose &middot; a detector with no fit set</p>
+  <h2>Tell the detector where to look, and it needs no examples</h2>
+  <div class="col">
+    <p>
+      A dictionary has to <em>discover</em> that periodicity is the signal, and
+      discovery is what costs unlabelled examples &mdash; that is the dose the rest
+      of this page measures. But the comb's spacing is
+      <code>f_s / &prod; strides</code>, an architecture constant, and published
+      decoders' stride products form a short list. A detector <em>told</em> where
+      to look learns nothing, so there is no fitting corpus and no dose.
+    </p>
+    <p>
+      Two steps. <strong>Restrict the search</strong> to the handful of spacings a
+      real decoder could produce, instead of taking the largest of ~4,000 noisy
+      candidates. Then <strong>subtract a null read on the same residual</strong>, so
+      whatever else is true about that track cancels.
+    </p>
+    <p>
+      Which null is the whole thing. Our first version drew 24 deliberately wrong
+      candidate sets at random, and that has a defect we went looking for: a drawn
+      lag sometimes <em>is</em> one of the prior's own, so the same number appears on
+      both sides of the subtraction and the score is exactly zero &mdash; on 19.5% of
+      FakeMusicCaps tracks. A deployment threshold is a quantile, so it lands inside
+      that tie and takes all of it at once. Recall on the worst generator was
+      <strong>3%</strong> while the headline AUC read 0.915.
+    </p>
+    <p>
+      The replacement enumerates instead of drawing: take every lag in 40&ndash;600&nbsp;Hz
+      and delete &plusmn;1 bin around <em>every</em> integer multiple of <em>every</em>
+      candidate spacing. No seed, and the null cannot contain a real comb tooth by
+      construction. Deleting only the prior's own lags is not enough &mdash; a decoder
+      emits energy at every multiple, so a null holding the comb's higher teeth makes
+      the score subtract its own evidence, scoring &minus;0.128 on a clean synthetic
+      50&nbsp;Hz comb where the protected null scores +0.511.
+    </p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th></th><th>FakeMusicCaps</th><th>SONICS</th><th>inverted families</th></tr></thead>
+      <tbody>
+        <tr><td>best existing training-free score</td><td>0.9177</td><td>0.7546</td><td>2 of 10</td></tr>
+        <tr><td>&nbsp;&nbsp;+ prior, random decoy null</td><td>0.9153</td><td>0.8272</td><td>0 of 10</td></tr>
+        <tr><td><strong>+ prior, deterministic null</strong></td><td><strong>0.9445</strong></td><td><strong>0.8286</strong></td><td><strong>0 of 10</strong></td></tr>
+      </tbody>
+      <caption>
+        Signed macro AUC, full corpus. The deterministic null is ahead on both
+        benchmarks: on FakeMusicCaps its interval [0.9416, 0.9474] is disjoint from
+        the unrestricted score's [0.9128, 0.9227] (DeLong <i>p</i> = 5.6&times;10<sup>&minus;104</sup>
+        against the decoy form), and on SONICS it is +0.074 over the unrestricted
+        score, though a statistical tie with the decoy form it replaces
+        (<i>p</i> = 0.106). Udio moves from 0.19 and 0.18 &mdash; actively
+        mis-ordering &mdash; to 0.586 and 0.579. No training, no dictionary, no
+        fitted parameter, no seed.
+      </caption>
+    </table>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Contribution 1 &middot; the transductive dose</p>
+  <h2>Putting a number on a limitation the authors stated</h2>
+  <div class="col">
+    <p>
+      The method learns a non-negative dictionary over spectral &ldquo;fakeprints&rdquo;
+      and scores a track by the peak energy its reconstruction loses under blurring.
+      No fake label enters the estimator. But the dictionary is learned from a matrix
+      that <em>contains the corpus being scored</em>, and that corpus is majority
+      generated audio. Its authors say so, in their own limitations: the method needs
+      &ldquo;a sufficiently large sample collection for a synthetic class to detect it
+      (otherwise, it is treated as noise and thus as real)&rdquo;. What no one had
+      supplied is <em>how large</em>. So we varied one thing only: which unlabelled
+      audio the dictionary sees.
+    </p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>the dictionary is learned from</th><th>FakeMusicCaps</th><th>SONICS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>the scored corpus itself &mdash; the published protocol</td><td class="big">0.9917</td><td class="big">0.9389</td></tr>
+        <tr><td>a different corpus &mdash; inductive transfer</td><td>0.5733</td><td>0.7123</td></tr>
+        <tr><td>real music only, held out, 3 seeds</td><td class="big">0.744 &plusmn; 0.020</td><td class="big inv">0.382 &plusmn; 0.043</td></tr>
+        <tr class="rule-top"><td>cost of the protocol</td><td>&minus;0.248</td><td>&minus;0.557</td></tr>
+      </tbody>
+      <caption>
+        Signed macro AUC, full corpus (32,960 and 59,280 tracks), dictionary rows
+        excluded from evaluation. FakeMusicCaps degrades; SONICS inverts &mdash;
+        real music scores higher than generated music.
+      </caption>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>
+      The transition is a switch, not a ramp, and it is visible only because every
+      cell was run at three seeds. With twenty atoms, either enough generated audio
+      is present for the factorisation to spend one atom on the decoder comb or it
+      is not. The seed standard deviation is therefore not noise: it peaks
+      <em>at</em> the transition and collapses immediately after. <strong>The error
+      bar is the transition width.</strong>
+    </p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Two arms &middot; which number belongs to whom</p>
+  <h2>0.99 is not our zero-shot number</h2>
+  <div class="col">
+    <p>
+      The paper measures someone else&rsquo;s method and reports its own separately.
+      Conflating the two would be the exact error the paper is about.
+    </p>
+  </div>
+  <div class="arms">
+    <div class="arm">
+      <span class="tag">NMF blurred-atom &middot; transductive</span>
+      <div class="score">0.9917 / 0.9389</div>
+      <span class="tag">FakeMusicCaps / SONICS</span>
+      <p>The method we measure. Label-free, but its dictionary sees the scored corpus.</p>
+    </div>
+    <div class="arm">
+      <span class="tag">Comb statistic &middot; ours, 0 parameters</span>
+      <div class="score">0.9177 / 0.7546</div>
+      <span class="tag">FakeMusicCaps / SONICS, two-sided</span>
+      <p>Genuinely training-free. Every deployment figure below comes from this arm.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Contribution 2 &middot; signal processing</p>
+  <h2>Bandwidth is not the binding constraint &mdash; resolution is</h2>
+  <div class="col">
+    <p>
+      Prior work set both public benchmarks aside because they ship at
+      16&nbsp;kHz, which cuts off the band the fakeprint was designed for. With the
+      band re-derived for the lower rate the method still reaches 0.9917 and
+      0.9389, so the cutoff is survivable &mdash; and that is what makes every
+      other measurement on this page possible. Their published descriptor
+      transfers essentially unchanged. What binds is coarser: the requirement is
+      a <em>resolution</em> of about 2.7&nbsp;Hz per bin, not any particular
+      dimension, and it has to be re-derived when the sample rate changes.
+    </p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>fakeprint bins</th><th>FakeMusicCaps</th><th>SONICS</th></tr></thead>
+      <tbody>
+        <tr><td>native (7,167 / 4,779)</td><td>0.99168</td><td>0.93894</td></tr>
+        <tr><td><strong>4,458 &mdash; their published dimension</strong></td><td><strong>0.98910</strong></td><td><strong>0.93864</strong></td></tr>
+        <tr><td>2,600 &mdash; their resolution (2.69&nbsp;Hz/bin)</td><td>0.98782</td><td>0.92926</td></tr>
+        <tr><td>1,000</td><td>0.97382</td><td>0.89860</td></tr>
+        <tr><td>445</td><td>0.94568</td><td>0.83676</td></tr>
+      </tbody>
+      <caption>
+        Signed macro AUC, full corpus. The requirement is also generator-dependent:
+        at 445 bins the three Suno families still read 0.90&ndash;0.98 while both
+        Udio families fall to 0.67.
+      </caption>
+    </table>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">The mechanism &middot; checked, not asserted</p>
+  <h2>What the atoms encode &mdash; and where the evidence runs out</h2>
+  <div class="col">
+    <p>
+      A transposed-convolution decoder leaves a comb whose spacing is the sample
+      rate divided by the product of its strides &mdash; an architecture
+      constant, fixed before the model sees any data. So the claim &ldquo;the
+      dictionary learns decoder combs&rdquo; is testable: measure each learned
+      atom&rsquo;s own comb spacing and check it against the spacing measured on
+      the corpus. The test needs a null, and the choice of null decides the
+      answer.
+    </p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th></th><th>on its own comb</th><th>on the <i>other</i> corpus&rsquo;s</th><th>Fisher <i>p</i></th><th>verdict</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>FakeMusicCaps, any sub-multiple</td><td class="big">15 / 20</td><td>7 / 20</td><td>0.025</td><td>holds</td></tr>
+        <tr><td>FakeMusicCaps, fundamental only</td><td class="big">6 / 20</td><td class="big">0 / 20</td><td class="big">0.020</td><td>holds</td></tr>
+        <tr><td>SONICS, any sub-multiple</td><td>9 / 20</td><td>4 / 20</td><td class="inv">0.176</td><td class="inv">not shown</td></tr>
+        <tr><td>SONICS, fundamental only</td><td>6 / 20</td><td>3 / 20</td><td class="inv">0.451</td><td class="inv">not shown</td></tr>
+      </tbody>
+      <caption>
+        An atom counts as on a comb if its recovered spacing is within 1% of a
+        measured decoder spacing or its half or quarter. The obvious null &mdash;
+        a fundamental drawn uniformly from 40&ndash;700&nbsp;Hz &mdash; is too
+        weak, because the atom spacings are themselves selected by the pipeline.
+        The honest null scores each corpus&rsquo;s atoms against the
+        <em>other</em> corpus&rsquo;s measured decoder spacing. It splits the
+        result.
+      </caption>
+    </table>
+  </div>
+  <div class="col">
+    <p>
+      <strong>On FakeMusicCaps the claim survives, and for an identifiable
+      reason.</strong> Six atoms sit on a measured fundamental and none on
+      SONICS&rsquo;s. The discriminating evidence is MusicGen&rsquo;s
+      <span class="num">250.1</span>&nbsp;Hz cluster against a measured
+      <span class="num">250.0</span> &mdash; a spacing no other family here
+      shares, recovered from audio carrying no label.
+    </p>
+    <p>
+      <strong>On SONICS it does not.</strong> Its comb is at
+      <span class="num">399.902</span>&nbsp;Hz and FakeMusicCaps&rsquo; at
+      <span class="num">200.195</span>. Half of 399.902 is
+      <span class="num">199.95</span> &mdash; <strong>0.12% away</strong>. The
+      two corpora&rsquo;s decoders sit within 0.12% of a 2:1 ratio, so once
+      sub-multiples are admitted, spacing cannot say which decoder a SONICS atom
+      belongs to. We report it as unresolved.
+    </p>
+    <p class="note">
+      This is the seventh claim the project has had to withdraw, and it was
+      caught by running the null a referee would have run. The rule that made
+      the count impressive &mdash; admitting sub-multiples &mdash; is the same
+      rule that destroyed its power to attribute. What survives on both corpora
+      needs no attribution at all: mean atom periodicity is
+      <span class="num">0.700</span> on FakeMusicCaps against
+      <span class="num">0.464</span> on SONICS, ordered exactly like the AUCs.
+    </p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Contribution 3 &middot; deployment and fairness</p>
+  <h2>What the benchmark measures, and what a deployment costs</h2>
+  <div class="col">
+    <p>
+      On the uncontrolled SONICS corpus a single high-frequency floor statistic
+      &mdash; nothing but the delivery chain &mdash; reaches signed AUC
+      <span class="num">0.9842</span>, correctly oriented on all five generator
+      families. Matching the chain removes it, and costs our own detector
+      <span class="num">0.217</span> AUC, which we report against ourselves.
+    </p>
+    <p>
+      At a <span class="num">4.7%</span> false-positive rate the detector recalls
+      <span class="num">67.4%</span> of generated tracks, which at a 1% base rate of
+      AI music is a precision of <span class="num">0.127</span> &mdash; nearly seven
+      false accusations for every correct one. Thresholding on in-corpus real music
+      and applying that threshold to unseen real music moves the false-positive rate
+      from <span class="num">0.042</span> to <span class="num">0.115</span>.
+    </p>
+    <p>
+      That error is not spread evenly. Across 2,998 tracks the false-positive rate is
+      <strong><span class="num">0.236</span> on Electronic</strong> and
+      <strong><span class="num">0.028</span> on Folk</strong>, an
+      <span class="num">8.5&times;</span> spread &mdash; and the mechanism is the
+      detector&rsquo;s own, since electronic production already carries quantised
+      spectral structure resembling a decoder comb. A deployed system would
+      systematically over-accuse electronic artists.
+    </p>
+    <p>
+      The proposed detector can be equalised where the decoy version cannot, and the
+      reason is the tie mass: a quantile threshold cannot be placed inside one. Under
+      group-conditional conformal calibration, all eight genres land between
+      <span class="num">4.4%</span> and <span class="num">5.1%</span> against a 5%
+      target &mdash; a <span class="num">1.17&times;</span> spread, against
+      <span class="num">1.93&times;</span> for the decoy version. Its threshold also
+      travels: applied to unseen FMA reals it lands <em>under</em> budget at
+      <span class="num">0.72&times;</span> the intended rate while catching
+      <span class="num">87.6%</span> of generated tracks, against
+      <span class="num">62.5%</span> for the decoy version.
+    </p>
+    <p>
+      One caveat we will not drop. Precision is a property of the base rate, not of a
+      detector, and it is more useful stated as a requirement than as a verdict: on
+      unseen FMA reals, reaching precision <span class="num">0.9</span> needs a
+      prevalence near <span class="num">6%</span> at <i>q</i>&nbsp;=&nbsp;0.999, or
+      <span class="num">30%</span> at <i>q</i>&nbsp;=&nbsp;0.95. At a 1% base rate no
+      operating point we measured gets there. Screening a stream of plays and
+      screening a stream of uploads are different problems, and that is a deployment
+      question rather than a detector question.
+    </p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">The code &middot; three commands reproduce the argument</p>
+  <h2>Run it</h2>
+  <div class="col">
+    <p>
+      Twenty-eight live scripts; everything superseded is archived rather than
+      deleted, because several superseded scripts produced numbers that are still
+      cited &mdash; including retracted ones kept on purpose. The three commands
+      below differ in <em>one flag</em>, and that flag is the paper.
+    </p>
+  </div>
+
+  <div class="runs">
+    <div class="run">
+      <div class="run-head">
+        <span class="what">The published protocol</span>
+        <span class="yields">&rarr; AUC 0.9389</span>
+      </div>
+      <pre>python scripts/eval_nmf_peak_detector.py \
+  --manifest data/processed/canonical_sonics_chain/canonical_manifest.csv \
+  --per-stratum 0 --max-duration 120 --level-match \
+  --n-atoms 20 --blur-sigma 5 <span class="flag">--fit-on pooled</span> \
+  --out-dir reports/diagnostics/nmf_sonics_FULL</pre>
+      <p class="after">The dictionary is learned from the corpus being scored.</p>
+    </div>
+
+    <div class="run">
+      <div class="run-head">
+        <span class="what">What a deployer actually has</span>
+        <span class="yields">&rarr; AUC 0.382 &plusmn; 0.043</span>
+      </div>
+      <pre>python scripts/eval_nmf_peak_detector.py \
+  --manifest data/processed/canonical_sonics_chain/canonical_manifest.csv \
+  --per-stratum 0 --max-duration 120 --level-match \
+  --n-atoms 20 --blur-sigma 5 <span class="flag">--fit-on reals --holdout-reals</span> \
+  <span class="flag">--fit-seeds 42 43 44</span> \
+  --out-dir reports/diagnostics/nmf_sonics_reals_heldout</pre>
+      <p class="after">
+        Real music only. <code>--holdout-reals</code> excludes the dictionary rows
+        from evaluation &mdash; without it the same command returns an inverted
+        score for reasons that have nothing to do with generated audio.
+      </p>
+    </div>
+
+    <div class="run">
+      <div class="run-head">
+        <span class="what">The dose &mdash; the figure at the top of this page</span>
+        <span class="yields">&rarr; 10 points &times; 3 seeds</span>
+      </div>
+      <pre>python scripts/eval_nmf_peak_detector.py \
+  --manifest data/processed/canonical_sonics_chain/canonical_manifest.csv \
+  --per-stratum 0 --max-duration 120 --level-match \
+  --n-atoms 20 --blur-sigma 5 <span class="flag">--fit-on mixture --fit-real-frac 0.5</span> \
+  <span class="flag">--holdout-reals --fit-seeds 42 43 44</span> \
+  --out-dir reports/diagnostics/nmf_sonics_curve_FINAL
+
+<span class="cmt"># then, locally:</span>
+python scripts/make_paper_figures.py --out-dir icassp/figs
+cd icassp &amp;&amp; latexmk -pdf paper.tex</pre>
+      <p class="after">
+        Labels build the fit set at a known contamination fraction; the estimator
+        never receives one.
+      </p>
+    </div>
+  </div>
+
+  <div class="col">
+    <p class="note" style="margin-top:1.5rem">
+      Every result also carries a gate battery &mdash; <code>run_confound_gate.py</code>
+      &mdash; and no number enters a report without one beside it. A SKIP is not a
+      PASS, and the paper says which of its gates are which.
+    </p>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Withdrawn claims &middot; kept visible</p>
+  <h2>Every one was a number carried forward instead of re-derived</h2>
+  <div class="col">
+    <p>
+      These are listed rather than buried because the protocol lessons are the
+      reason the surviving numbers can be trusted.
+    </p>
+  </div>
+
+  <div class="withdrawn">
+    <div class="wd">
+      <div class="st">retracted</div>
+      <div><div class="claim">&ldquo;NMF reconstruction error inverts&rdquo; &mdash; 0.4998 / 0.2564</div>
+      <div class="why">Wrong quantity and wrong fit set: we computed a novelty score where the source computes a peak-energy score.</div></div>
+    </div>
+    <div class="wd">
+      <div class="st">withdrawn</div>
+      <div><div class="claim">&ldquo;We extend the fakeprint below 16&nbsp;kHz&rdquo;</div>
+      <div class="why">Their code already takes the band as an argument. Read the code, not the abstract.</div></div>
+    </div>
+    <div class="wd">
+      <div class="st">retracted</div>
+      <div><div class="claim">SONICS 0.8468</div>
+      <div class="why">That was |AUC|. Signed, it is 0.6203 &mdash; the absolute value was hiding a per-generator inversion worth 0.23.</div></div>
+    </div>
+    <div class="wd">
+      <div class="st">corrected</div>
+      <div><div class="claim">&ldquo;Our comb statistic uses the published operator&rdquo;</div>
+      <div class="why">The winning operator is in neither codebase. Operator and readout turned out to be coupled.</div></div>
+    </div>
+    <div class="wd">
+      <div class="st">retracted</div>
+      <div><div class="claim">&ldquo;Reals-only inverts to 0.167&rdquo; on FakeMusicCaps</div>
+      <div class="why">A train-on-test leak one level down: the fit reals <em>were</em> the scored reals. Held out at full corpus it is 0.744&nbsp;&plusmn;&nbsp;0.020, and the dose&ndash;response ran the opposite way to what we had published.</div></div>
+    </div>
+    <div class="wd">
+      <div class="st">retracted</div>
+      <div><div class="claim">&ldquo;An FPR of 5% caps precision at 0.161&rdquo;</div>
+      <div class="why">Caught during the write-up: traceable to no CSV at all. The measured value is 0.127 at a 4.7% FPR on 6,361 reals.</div></div>
+    </div>
+    <div class="wd">
+      <div class="st">retracted</div>
+      <div><div class="claim">&ldquo;The published descriptor is 445-dimensional&rdquo;</div>
+      <div class="why">It is 4,458. We had recorded the wrong figure for someone else&rsquo;s paper and built a contribution on the difference. The contribution went; the resolution finding that replaced it is real and smaller.</div></div>
+    </div>
+    <div class="wd">
+      <div class="st">retracted</div>
+      <div><div class="claim">&ldquo;An exhaustive prior falls to chance&rdquo; &mdash; 0.5044</div>
+      <div class="why">Two defects, both ours: the sweep moved the prior and the null together, and the fixture was weaker than the one every neighbouring table used. Controlled, going from 2 to 40 harmonics costs about 0.02 AUC, not 0.46.</div></div>
+    </div>
+    <div class="wd">
+      <div class="st">superseded</div>
+      <div><div class="claim">A calibration built from 24 randomly drawn decoy sets</div>
+      <div class="why">A drawn decoy is sometimes one of the prior&rsquo;s own lags, so 19.5% of FakeMusicCaps margins were pinned at exactly zero and a quantile threshold took the whole tie at once &mdash; 3% recall on the worst generator at AUC 0.915. The deterministic null above replaces it, and was found by asking what the calibration could not do rather than what it could.</div></div>
+    </div>
+    <div class="wd">
+      <div class="st">narrowed</div>
+      <div><div class="claim">&ldquo;The atoms recover the decoder strides&rdquo; &mdash; on both corpora</div>
+      <div class="why">True on FakeMusicCaps (<i>p</i> = 0.020 against a cross-corpus null), unresolved on SONICS: the two corpora&rsquo;s combs are within 0.12% of a 2:1 ratio, so sub-multiple matches cannot attribute an atom to a decoder. Caught by running the stricter null.</div></div>
+    </div>
+  </div>
+
+  <ul class="rules">
+    <li>Whenever a score is read off a fitted object, check whether the fitted rows are also scored. This cost a headline twice.</li>
+    <li><span class="num">|AUC|</span> is a legitimate measure of how much class information a nuisance variable carries, and an illegitimate measure of detector performance.</li>
+    <li>No number enters a report without a confound-gate output beside it &mdash; and a SKIP is not a PASS.</li>
+    <li>Put a reproducibility anchor, a repeated cell, in every sweep. Ours caught a defect that had already changed a headline.</li>
+    <li>Run three seeds. The finding at the top of this page is invisible at one.</li>
+  </ul>
+</section>
+
+<section>
+  <p class="eyebrow">Before this &middot; two falsified theses</p>
+  <h2>What we set out to do, and why it failed</h2>
+  <div class="col">
+    <p>
+      The project began by estimating the <strong>intrinsic dimension</strong> of a
+      track&rsquo;s embedding cloud, on the theory that real music lives on a
+      higher-dimensional manifold. The sign turned out to be generator-dependent
+      &mdash; two generators one way, three the other &mdash; so no threshold exists.
+    </p>
+    <p>
+      It then spent its longest phase on <strong>one-class normalising flows</strong>:
+      fit a density on real music, flag the unlikely. Six formulations, including
+      every score correction in the out-of-distribution literature, all inverted. A
+      capacity ladder made detection <em>monotonically worse</em> as the density got
+      better, and a held-out likelihood decomposition put the flow at chance.
+    </p>
+    <p>
+      One mechanism explains both. <strong>Generated audio is simpler and more
+      regular than real music</strong>, so every statistic of the form &ldquo;is this
+      unusual for real music?&rdquo; ranks it as <em>more</em> real. No reweighting of
+      the same likelihood escapes that. The rule this earned: a statistic whose sign
+      is fitted will get its sign wrong on the case you care about &mdash; take the
+      sign from the mechanism instead. Which is what a decoder comb provides, and why
+      the third act is about physics rather than statistics.
+    </p>
+  </div>
+</section>
+
+<footer class="wrap" style="padding-left:0;padding-right:0">
+  <div class="wrap" style="padding:0">
+    <p class="eyebrow">Where to look</p>
+    <div class="links">
+      <a href="https://github.com/GiannisProkopiouOrfium/ai-music-dose/blob/main/reports/provenance_ledger.md">provenance ledger &mdash; every number, re-read from its CSV</a>
+      <a href="https://github.com/GiannisProkopiouOrfium/ai-music-dose/blob/main/scripts/README.md">what each script produces</a>
+      <a href="https://github.com/GiannisProkopiouOrfium/ai-music-dose/blob/main/src/intrinsic_ai_music_detection/features/comb_artifacts.py">the detector, in one function</a>
+      <a href="https://github.com/GiannisProkopiouOrfium/ai-music-dose/blob/main/icassp/paper.tex">the paper source</a>
+      <a href="https://github.com/GiannisProkopiouOrfium/ai-music-dose">the repository</a>
+    </div>
+    <p class="note" style="margin-top:1.6rem;max-width:var(--measure)">
+      Numbers on this page are transcribed from
+      <code>reports/provenance_ledger.md</code> &mdash; the dose from §N and §O, the
+      detector from rounds R27.20 to R27.97 &mdash; and the interactive figure uses
+      the per-seed values in §N verbatim. Every number carries a confound-gate output
+      behind it, and a SKIP is not a PASS. Where a number moved during the study,
+      both values are shown: there is no version of this work in which the earlier
+      figure is quietly dropped.
+    </p>
+  </div>
+</footer>
+
+</div>
+
+<script>
+// reports/provenance_ledger.md §N — nmf_sonics_curve_FINAL/nmf_peak_auc_lvl.csv
+// held out, --fit-real-frac 0.5, seeds 42/43/44, 6,361 reals scored at each point.
+var CURVE = [
+  {n:0,     pct:"0%",     s:[0.402,0.411,0.333], mean:0.382, sd:0.043,  flip:0, chirp:0.310},
+  {n:9,     pct:"0.14%",  s:[0.437,0.425,0.338], mean:0.400, sd:0.054,  flip:0, chirp:0.342},
+  {n:23,    pct:"0.36%",  s:[0.611,0.524,0.344], mean:0.493, sd:0.137,  flip:0, chirp:0.493},
+  {n:47,    pct:"0.73%",  s:[0.785,0.786,0.411], mean:0.661, sd:0.216,  flip:2, chirp:0.774},
+  {n:70,    pct:"1.09%",  s:[0.787,0.786,0.788], mean:0.787, sd:0.0006, flip:3, chirp:0.984},
+  {n:93,    pct:"1.44%",  s:[0.787,0.790,0.787], mean:0.788, sd:0.002,  flip:3, chirp:0.986},
+  {n:233,   pct:"3.53%",  s:[0.796,0.794,0.790], mean:0.793, sd:0.003,  flip:3, chirp:0.987},
+  {n:931,   pct:"12.8%",  s:[0.899,0.903,0.900], mean:0.901, sd:0.002,  flip:3, chirp:0.992},
+  {n:2328,  pct:"26.8%",  s:[0.913,0.915,0.914], mean:0.914, sd:0.001,  flip:3, chirp:0.996},
+  {n:11640, pct:"64.7%",  s:[0.931,0.933,0.931], mean:0.932, sd:0.001,  flip:3, chirp:0.998}
+];
+
+var LO = 0.25, HI = 1.00;
+var pos = function (auc) { return ((auc - LO) / (HI - LO) * 100) + "%"; };
+
+var VERDICTS = [
+  "No generated audio at all. Every atom is a real-music atom, a decoder comb projects onto them poorly, and generated tracks lose <b>less</b> energy under blurring than real music does. The score is inverted.",
+  "Nine tracks is not enough to buy an atom. All three draws are still inverted.",
+  "Twenty-three tracks. The mean has climbed, but no draw has flipped &mdash; the movement is spread, not signal.",
+  "Forty-seven tracks. <b>Two of three draws have flipped</b> and the third has not, so the seed SD peaks here at 0.216. This is the transition, and its width is the error bar.",
+  "Seventy tracks &mdash; <b>0.7% of the dictionary</b>. All three draws have flipped, the SD collapses to 0.0006, and Suno/chirp goes from 0.31 to 0.98. Nothing between.",
+  "Past the switch. Adding more generated audio now buys very little; the atom already exists.",
+  "Past the switch. Adding more generated audio now buys very little; the atom already exists.",
+  "Well past the switch. The remaining climb comes from better-resolved atoms, not from crossing a threshold.",
+  "Well past the switch. The remaining climb comes from better-resolved atoms, not from crossing a threshold.",
+  "Essentially the published protocol, reached by an independent code path: 0.932 here against the 0.939 headline."
+];
+
+var dots = [document.getElementById("d0"), document.getElementById("d1"), document.getElementById("d2")];
+var meanEl = document.getElementById("mean");
+var verdict = document.getElementById("verdict");
+var heroWord = document.getElementById("heroWord");
+
+document.getElementById("chance").style.left = pos(0.5);
+
+function render(i) {
+  var c = CURVE[i];
+  var on = c.mean >= 0.5;
+
+  for (var k = 0; k < 3; k++) {
+    dots[k].style.left = pos(c.s[k]);
+    dots[k].classList.toggle("on", c.s[k] >= 0.5);
+  }
+  meanEl.style.left = pos(c.mean);
+  meanEl.classList.toggle("on", on);
+
+  document.getElementById("rMean").textContent = c.mean.toFixed(3);
+  document.getElementById("rSd").textContent = c.sd < 0.001 ? c.sd.toFixed(4) : c.sd.toFixed(3);
+  document.getElementById("rFlip").textContent = c.flip + "/3";
+  document.getElementById("rMean").style.color = on ? "var(--working)" : "var(--inverted)";
+  document.getElementById("rFlip").style.color = c.flip === 3 ? "var(--working)" : "var(--inverted)";
+
+  document.getElementById("doseLabel").innerHTML =
+    c.n.toLocaleString() + " fakes &middot; " + c.pct;
+
+  verdict.innerHTML = VERDICTS[i];
+  verdict.classList.toggle("on", on);
+  heroWord.textContent = on ? "works" : "inverts";
+  heroWord.classList.toggle("on", on);
+}
+
+document.getElementById("dose").addEventListener("input", function (e) {
+  render(parseInt(e.target.value, 10));
+});
+render(0);
+</script>
+</body>
+</html>
