@@ -282,47 +282,64 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
       to look learns nothing, so there is no fitting corpus and no dose.
     </p>
     <p>
-      Two steps. <strong>Restrict the search</strong> to the handful of spacings a
-      real decoder could produce, instead of taking the largest of ~4,000 noisy
-      candidates. Then <strong>subtract a null read on the same residual</strong>, so
-      whatever else is true about that track cancels.
+      <strong>The statistic.</strong> Each track becomes a time-averaged log power
+      spectrum with a five-bin running median subtracted, which removes the spectral
+      envelope and leaves the narrow peaks. Call that residual <em>e</em>, above
+      1&nbsp;kHz. By the Wiener&ndash;Khinchin identity its autocorrelation
+      <em>along frequency</em> is the inverse transform of its power spectrum, so a
+      comb of spacing &Delta; shows up as a peak at lag &Delta;/<em>b</em> for bin
+      width <em>b</em>. We use a median rather than the clipped hull the published
+      descriptor uses, because the hull saturates teeth above 5&nbsp;dB and an
+      autocorrelation peak needs their amplitude.
     </p>
     <p>
-      Which null is the whole thing. Our first version drew 24 deliberately wrong
-      candidate sets at random, and that has a defect we went looking for: a drawn
-      lag sometimes <em>is</em> one of the prior's own, so the same number appears on
-      both sides of the subtraction and the score is exactly zero &mdash; on 19.5% of
-      FakeMusicCaps tracks. A deployment threshold is a quantile, so it lands inside
-      that tie and takes all of it at once. Recall on the worst generator was
-      <strong>3%</strong> while the headline AUC read 0.915.
+      <strong>The prior.</strong> Restrict the search to the handful of spacings a
+      real decoder could produce &mdash; the lags where a published decoder could put
+      a tooth &mdash; instead of taking the largest of ~4,000 noisy candidates.
+      Restriction alone helps, but the restricted score still inherits each track's
+      residual statistics, and Udio's residual is <em>flatter</em> than real music's,
+      which inverts it.
     </p>
     <p>
-      The replacement enumerates instead of drawing: take every lag in 40&ndash;600&nbsp;Hz
-      and delete &plusmn;1 bin around <em>every</em> integer multiple of <em>every</em>
-      candidate spacing. No seed, and the null cannot contain a real comb tooth by
-      construction. Deleting only the prior's own lags is not enough &mdash; a decoder
-      emits energy at every multiple, so a null holding the comb's higher teeth makes
-      the score subtract its own evidence, scoring &minus;0.128 on a clean synthetic
-      50&nbsp;Hz comb where the protected null scores +0.511.
+      <strong>The null.</strong> So subtract a null read on the same residual and
+      score the difference. Which null is the detector. We take the prior's
+      <em>own hypothesis space</em> &mdash; every lag an admissible fundamental could
+      reach &mdash; less a one-bin neighbourhood of <em>every</em> integer multiple of
+      <em>every</em> candidate. Because the null is the alternative hypothesis rather
+      than an arbitrary band, the subtraction is a test and not an offset, and the two
+      sets are disjoint by construction. Deleting only the prior's own lags is not
+      enough: a decoder emits energy at every multiple, so a null holding the comb's
+      higher teeth makes the score subtract its own evidence, scoring &minus;0.128 on
+      a clean synthetic 50&nbsp;Hz comb where the protected null scores +0.511.
+    </p>
+    <p>
+      <strong>Settings.</strong> The prior holds the first <em>M</em> multiples of six
+      published fundamentals spanning 21.5&ndash;100&nbsp;Hz above a 40&nbsp;Hz floor,
+      and the null spans 40 to <em>M</em>&times;150&nbsp;Hz, 150&nbsp;Hz being the
+      highest plausible decoder fundamental. At <em>M</em>&nbsp;=&nbsp;4 that leaves
+      441 admissible lags on FakeMusicCaps and 253 on SONICS. Nothing here is delicate:
+      <em>M</em>&nbsp;&isin;&nbsp;{2,&nbsp;4} moves macro AUC by at most 0.007 on
+      either corpus, and the 40&nbsp;Hz floor is not load-bearing either &mdash;
+      lowering it to 20&nbsp;Hz moves macro AUC by &minus;0.006 and +0.000. The one
+      setting that matters is <em>M</em>&nbsp;=&nbsp;1, which costs 0.015 and 0.029
+      because Stable Audio's 21.5&nbsp;Hz series is then unrepresentable above the
+      floor.
     </p>
   </div>
   <div class="scroll">
     <table>
       <thead><tr><th></th><th>FakeMusicCaps</th><th>SONICS</th><th>inverted families</th></tr></thead>
       <tbody>
-        <tr><td>best existing training-free score</td><td>0.9177</td><td>0.7546</td><td>2 of 10</td></tr>
-        <tr><td>&nbsp;&nbsp;+ prior, random decoy null</td><td>0.9153</td><td>0.8272</td><td>0 of 10</td></tr>
-        <tr><td><strong>+ prior, deterministic null</strong></td><td><strong>0.9445</strong></td><td><strong>0.8286</strong></td><td><strong>0 of 10</strong></td></tr>
+        <tr><td>the same statistic, prior and null removed</td><td>0.9177</td><td>0.7546</td><td>2 of 10</td></tr>
+        <tr><td><strong>prior + deterministic null</strong></td><td><strong>0.9445</strong></td><td><strong>0.8286</strong></td><td><strong>0 of 10</strong></td></tr>
       </tbody>
       <caption>
-        Signed macro AUC, full corpus. The deterministic null is ahead on both
-        benchmarks: on FakeMusicCaps its interval [0.9416, 0.9474] is disjoint from
-        the unrestricted score's [0.9128, 0.9227] (DeLong <i>p</i> = 5.6&times;10<sup>&minus;104</sup>
-        against the decoy form), and on SONICS it is +0.074 over the unrestricted
-        score, though a statistical tie with the decoy form it replaces
-        (<i>p</i> = 0.106). Udio moves from 0.19 and 0.18 &mdash; actively
-        mis-ordering &mdash; to 0.586 and 0.579. No training, no dictionary, no
-        fitted parameter, no seed.
+        Signed macro AUC, full corpus. The first row is the ablation: the same
+        statistic with the prior and the null taken away. On FakeMusicCaps the
+        detector's interval [0.9416, 0.9474] is disjoint from the ablation's
+        [0.9128, 0.9227]; on SONICS it is +0.074, and Udio moves from 0.19 and 0.18
+        &mdash; actively mis-ordering &mdash; to 0.586 and 0.579. No training, no
+        dictionary, no fitted parameter, no seed.
       </caption>
     </table>
   </div>
@@ -343,9 +360,9 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
     <p>
       It also costs almost nothing to run: <span class="num">378</span> audio-seconds
       per second on four CPU cores, within 3% of the uncalibrated comb statistic,
-      against 8.13&nbsp;M trainable parameters for a learned competitor. The random-decoy
-      version of the same idea costs 2.4&times; more, because it recomputes one
-      autocorrelation per decoy set.
+      against 8.13&nbsp;M trainable parameters for a learned competitor. Calibration is
+      essentially free because the null is enumerated rather than drawn: it indexes a
+      precomputed autocorrelation instead of recomputing one.
     </p>
   </div>
 </section>
@@ -555,16 +572,14 @@ footer { border-top: 1px solid var(--rule); padding-block: 2.6rem 3.4rem; }
       systematically over-accuse electronic artists.
     </p>
     <p>
-      The proposed detector can be equalised where the decoy version cannot, and the
-      reason is the tie mass: a quantile threshold cannot be placed inside one. Under
+      The proposed detector can be equalised, and the reason is that no margin is tied
+      at zero: a quantile threshold cannot be placed inside a tie mass. Under
       group-conditional conformal calibration, all eight genres land between
       <span class="num">4.4%</span> and <span class="num">5.1%</span> against a 5%
-      target &mdash; a <span class="num">1.17&times;</span> spread, against
-      <span class="num">1.93&times;</span> for the decoy version. Its threshold also
+      target &mdash; a <span class="num">1.17&times;</span> spread. Its threshold also
       travels: applied to unseen FMA reals it lands <em>under</em> budget at
       <span class="num">0.72&times;</span> the intended rate while catching
-      <span class="num">87.6%</span> of generated tracks, against
-      <span class="num">62.5%</span> for the decoy version.
+      <span class="num">87.6%</span> of generated tracks.
     </p>
     <p>
       One caveat we will not drop. Precision is a property of the base rate, not of a
@@ -665,8 +680,7 @@ python scripts/derive_analytic_null.py \
         <code>--null-priors 0</code> is the point: the null is enumerated, not drawn,
         so there is no seed to record. The score is
         <code>comb_priormax4_hmargin</code>, and the <code>*_zeroatom.csv</code> beside
-        it reports what fraction of margins are exactly 0 &mdash; 0.0000 here, 0.1952
-        for the decoy form.
+        it reports what fraction of margins are exactly 0, which is 0.0000 here.
       </p>
     </div>
   </div>
