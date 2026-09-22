@@ -72,12 +72,11 @@
   Theodoros Giannakopoulos$^{4}$ \quad
   Themos Stafylakis$^{1,5}$}}
 \address{%
-  $^1$Athens University of Economics and Business, Athens, Greece \qquad
-  {\small\texttt{gian.prokopiou@aueb.gr}} \\
+  $^1$Athens University of Economics and Business, Athens, Greece \\
   $^2$Orfium, Athens, Greece \qquad
   $^3$Hellenic Mediterranean University, Rethymno, Greece \\
   $^4$NCSR ``Demokritos'', Athens, Greece \qquad
-  $^5$Archimedes/Athena R.C., Athens, Greece}
+  $^5$Archimedes/Athena R.C., Athens, Greece \\ {\small\texttt{gian.prokopiou@aueb.gr}}}
 
 \begin{document}
 \ninept
@@ -166,7 +165,9 @@ The artifact we measure is the audio instance of the checkerboard effect
 et al.\ \cite{pons2021upsampling}, who show that transposed convolutions imprint
 tonal artifacts whose spectral positions follow from the filter/stride
 relationship rather than from weights or training data. Afchar et al.\
-\cite{afchar2025fourier} turn this into the fakeprint and a detection criterion;
+\cite{afchar2025challenges} document the robustness and generalisation failures of
+supervised detectors, which is what label-free methods answer; \cite{afchar2025fourier}
+turns the artifact into the fakeprint and a detection criterion, and
 \cite{afchar2026finding} adds the blurred-atom score we implement, alongside a
 genuinely zero-shot clustering variant we do not study. Their contribution stands:
 we reproduce it, and it remains the strongest label-free result on either
@@ -195,10 +196,9 @@ where we \emph{measure} it at corpus level, and Cros Vila et al.\
 variation lets detectors learn dataset-specific shortcuts; Dugelay et al.\
 \cite{dugelay2026improved} answer it with frequency-scaling invariance. ASVspoof~5 \cite{wang2025asvspoof5} supplies the open-set framing, and M6
 \cite{li2026m6} and Echoes \cite{pascu2026echoes} the resources against which our
-two-corpus scope should be judged. The nearest analogues to
-Fig.~\ref{fig:contamination}(a,b) are contamination robustness in anomaly
-detection \cite{pang2019deviation}, which asks the \emph{inverse} question, and
-transductive outlier detection \cite{kluttermann2024transductive}.
+two-corpus scope should be judged. The nearest analogue to
+Fig.~\ref{fig:contamination}(a,b) is transductive outlier detection
+\cite{kluttermann2024transductive}.
 
 
 \begin{figure*}[t]
@@ -267,10 +267,10 @@ Both corpora are channel-matched first: every track, real or generated, is
 decoded, resampled to one rate per corpus ($16$\,kHz on FakeMusicCaps, $24$\,kHz
 on SONICS), loudness-normalised to $-23$\,LUFS (loudness units relative to full
 scale) and capped at a common duration ($9$\,s and $120$\,s), matched over the full
-corpus rather than a split. SONICS additionally passes a shared MP3 stage at
-$64$\,kb/s, the fake class's own delivery format and the origin of that corpus's
-$7.35$\,kHz band edge; FakeMusicCaps needs none, both its classes already sharing a
-format. \S\ref{sec:confounds} shows why this is not optional. SONICS supplies three Suno \texttt{chirp} and two Udio families against
+corpus rather than a split. SONICS additionally passes a shared $64$\,kb/s MP3
+stage, the fake class's own format and the origin of that corpus's $7.35$\,kHz band
+edge; FakeMusicCaps needs none. \S\ref{sec:confounds} shows why this is not
+optional. SONICS supplies three Suno \texttt{chirp} and two Udio families against
 $6{,}361$ reals;
 FakeMusicCaps supplies MusicGen, AudioLDM2, MusicLDM, Mustango and Stable Audio Open
 against $5{,}355$.
@@ -338,9 +338,9 @@ contamination appears to need a generator match
 
 \subsection{The dose}
 \label{ssec:dose}
-Fig.~\ref{fig:contamination}(a,b) fits the dictionary on half the real catalogue
-plus a known number of unlabelled generated tracks, and scores the other half of
-the reals together with all unused generated audio.
+Fig.~\ref{fig:contamination}(a,b) fits on half the real catalogue plus a known
+number of unlabelled generated tracks, and scores the other half together with all
+unused generated audio.
 
 On SONICS the mean curve appears to rise smoothly between $23$ and $70$
 contaminating tracks; it does not. At ten draws per cell,
@@ -377,9 +377,9 @@ arm $0.217$ on that corpus. Every value below is measured after that chain.
 
 \noindent\textbf{Signed AUC.} Reporting $|$AUC$|$ per generator inflated the comb
 % src: comb_sonics_fmin{200,500,1000}/comb_auc_*.csv (signed and abs columns)
-arm's own SONICS macro from $0.6203$ to $0.8468$, because the Udio families are
-\emph{inverted} while the chirp families are not. $|$AUC$|$ measures class
-information, not detector performance.
+arm's own SONICS macro from $0.6203$ to $0.8468$, the Udio families being inverted
+where the chirp families are not: $|$AUC$|$ measures class information, not detector
+performance.
 
 \noindent\textbf{Which families invert is a property of the detector.} Below the
 % src: nmf_sonics_curve_FINAL/nmf_peak_auc_lvl.csv, mix0pct, seeds 42--44
@@ -391,8 +391,7 @@ sign verified once cannot be reused: it must be re-checked per detector, which i
 % src: nmf_sonics_reals_energy/ joined to comb_sonics_FULL_rs15k/ on track_id
 \cite{zhou2026fragile}'s criterion applied one level up. Pooled, the dictionary
 score's correlation with the comb flips to $-0.08$ while energy stays $+0.20$: a
-failed between-class ordering, not lost sensitivity within a family
-($\rho = 0.41$--$0.74$ inside chirp).
+failed between-class ordering, not lost sensitivity within a family.
 
 \noindent\textbf{Two-sided real-only scoring.} Because some families invert we
 % src: fusion_fmc_twosided/, nmf_sonics_twosided/, fusion_sonics_FULL_rs15k_* (F1)
@@ -403,7 +402,7 @@ $0.022$--$0.068$ where one does (DeLong \cite{delong1988comparing}
 $p = 3.1 \times 10^{-57}$).
 
 \noindent\textbf{Confound gates.} Every reported number carries an eleven-gate
-battery, released in full with the code: channel, level, duration, silence, label
+battery, released with the code: channel, level, duration, silence, label
 shuffle, score sanity, stratum survival, decoder-spacing concentration,
 harmonicity, a content-identical control, and a bootstrap confidence interval (CI)
 with a DeLong test.
@@ -510,14 +509,14 @@ content-identical control, rerun for \emph{this} score, passes: EnCodec scores a
 its own source on $93$--$98\%$ of pairs against $47$--$58\%$ for phase-only
 reconstruction, which is at chance on FakeMusicCaps and, on SONICS, detectable
 ($p \approx 0.0015$) at a median shift $33$--$40\times$ below the codec's. On Udio it
-turns an inversion into a miss, a lesser and different thing: three statistics agree
-Udio leaves no comb inside these benchmarks' band.
+turns an inversion into a miss, a lesser thing: three statistics agree Udio leaves
+no comb in these benchmarks' band.
 
 \noindent\textbf{Prevalence and transfer.}%
 \label{sec:deployment} At a $4.7\%$ false-positive rate the
 % src: analysis_nmf_sonics_FULL/operating_points.csv, q=0.95, n_eval_reals=6361
-dictionary score on SONICS recalls $67.4\%$ of generated tracks, which at a $1\%$
-base rate is a precision of $0.127$: nearly seven false accusations per correct
+dictionary score on SONICS recalls $67.4\%$ of generated tracks, a precision of
+$0.127$ at a $1\%$ base rate: nearly seven false accusations per correct
 one. That ceiling belongs to the base rate, not the detector, and is better stated
 % src: fpr_fma_h4/ precision-at-prevalence, inverted (ledger R27.89)
 as a requirement: precision $0.9$ needs a prevalence near $6\%$ at $q{=}0.999$ or
@@ -550,7 +549,7 @@ thresholds cut such disparity by $54$--$75\%$ at no cost \cite{fursule2026gender
 audio-seconds per second on four CPU cores, within $3\%$ of the uncalibrated arm,
 against MusicDET's $8.13$\,M parameters \cite{han2026musicdet}; drawn decoys cost
 % src: data/processed/robustness_hmargin/robustness_auc_eer.csv (ledger R27.58, R27.95)
-$2.4\times$ as much, recomputing an autocorrelation per decoy set. It degrades $+0.2$/$+0.9$
+$2.4\times$ as much. It degrades $+0.2$/$+0.9$
 points of equal-error rate under AAC- and Opus-64k, which preserve a
 stride-determined periodicity, against $+13.6$ under time-stretch, a phase vocoder
 that leaves the spacing in place and blurs its teeth.
@@ -567,25 +566,22 @@ per-generator AUC.
 
 \noindent\textbf{Limitations.} Two $16$\,kHz benchmarks, channel labelled by
 construction, two gates failing marginally on both; M6 \cite{li2026m6} or Echoes
-\cite{pascu2026echoes} would test the dose under stronger shortcut controls. The
-corpora differ in how their halves were assembled, and channel matching equalises
-rate, level and duration but not encoding history, a candidate explanation for the
-corpus-dependent sign. Draws are three across the range and ten at the
+\cite{pascu2026echoes} would test the dose under stronger shortcut controls. Channel
+matching equalises rate, level and duration but not encoding history, a candidate
+explanation for the corpus-dependent sign. Draws are three across the range and ten
 % src: analysis_h4_fmc/, analytic_null_auc.csv recall_at_q95 (ledger R27.93)
-transition; $\sigma$, $F$ and the prior's depth were selected once on FakeMusicCaps;
-and the
-calibration of \S\ref{sec:detector} was devised after the one-sided score fell
-short on SONICS, so its gain \emph{there} is post-hoc, the FakeMusicCaps gain
-resting on a corpus that never motivated it. Its recall at a fixed quantile is
+at the transition; $\sigma$, $F$ and the prior's depth were fixed once and never
+re-tuned per corpus; and the calibration of \S\ref{sec:detector} was devised after the
+one-sided score fell short on SONICS, so its gain \emph{there} is post-hoc, the
+FakeMusicCaps gain resting on a corpus that never motivated it. Its recall at a fixed quantile is
 uneven where its AUC is not: $0.70$ and $0.80$ on MusicGen and Stable Audio Open
 % src: probe_M_{fmc,sonics}/ macro deltas by prior depth (ledger R27.71, R27.76, R27.88)
 against $0.93$--$1.00$ elsewhere.
 % src: data/processed/robustness_hmargin/robustness_auc_eer.csv (ledger R27.58, R27.95)
-The prior is a scope limit and not only a design choice: it assumes a strided
-transposed-convolution decoder, and a synthesiser built without one leaves no comb
-to find. One manipulation defeats it outright: pitch-shift resamples, moving $\Delta$ off
-all six candidate frequencies, and drives the score \emph{below} chance ($0.4665$),
-a signed inversion rather than a degradation. A log-frequency axis
+The prior is also a scope limit: it assumes a strided transposed-convolution
+decoder, so a synthesiser without one leaves no comb to find, and pitch-shift, which
+resamples and moves $\Delta$ off all six candidates, drives the score \emph{below}
+chance ($0.4665$) rather than merely degrading it. A log-frequency axis
 \cite{dugelay2026improved}, on which that shift is a translation, is the obvious
 repair, untested here.
 
