@@ -142,8 +142,8 @@ benchmarks at full corpus with held-out dictionaries, and on SONICS crossed betw
 bimodal draws rather than along a ramp (\S\ref{sec:boundary}); (ii) the sign result: below the dose
 the score inverts, and \emph{which} families invert is a property of the
 detector, not of the generator (\S\ref{sec:confounds}); (iii) the first full-corpus
-evaluation of this family on FakeMusicCaps and SONICS at the $16$\,kHz prior work
-set aside, with its resolution requirement quantified (\S\ref{sec:resolution}); (iv) deployment and per-genre error measurements absent from this
+evaluation of this family on the two benchmarks whose $16$\,kHz distribution prior
+work set aside, with its resolution requirement quantified (\S\ref{sec:resolution}); (iv) deployment and per-genre error measurements absent from this
 literature (\S\ref{sec:deployment}); and (v) a detector with no dose at all, a
 prior-restricted comb score calibrated against a deterministic null, training-free,
 dictionary-free and seedless, the only score we tested correctly oriented on all
@@ -186,7 +186,9 @@ returns in \S\ref{sec:confounds}. ArtifactNet
 where we \emph{measure} it at corpus level, and Cros Vila et al.\
 \cite{crosvila2025armsrace} show from the other side that sampling- and bit-rate
 variation lets detectors learn dataset-specific shortcuts; Dugelay et al.\
-\cite{dugelay2026improved} answer it with frequency-scaling invariance. ASVspoof~5 \cite{wang2025asvspoof5} supplies the open-set framing, and M6
+\cite{dugelay2026improved} answer it with frequency-scaling invariance, and Kim and
+Go \cite{kim2025segment} read the same two benchmarks through music structure rather
+than spectral residue. ASVspoof~5 \cite{wang2025asvspoof5} supplies the open-set framing, and M6
 \cite{li2026m6} and Echoes \cite{pascu2026echoes} the resources against which our
 two-corpus scope should be judged. The nearest analogue to our dose curve is
 transductive outlier detection \cite{kluttermann2024transductive}.
@@ -195,8 +197,8 @@ transductive outlier detection \cite{kluttermann2024transductive}.
 \centering
 \includegraphics[width=\textwidth]{fig1_contamination.pdf}
 \caption{\textbf{(a,b)} Unlabelled generated audio in the dictionary against detection
-performance, held out, full corpus; circles are the three draws spanning the range and
-ticks the four transition doses re-run at ten (\S\ref{ssec:dose}). \textbf{(c)} All
+performance, held out, full corpus; circles are three draws, ticks the four transition
+doses re-run at ten (\S\ref{ssec:dose}). \textbf{(c)} All
 $K{=}20$ atoms per corpus, recovered comb spacing against periodicity; dotted rules
 mark the \emph{measured} decoder spacings and their half and quarter, filled markers
 lying within $1\%$ of one (\S\ref{sec:resolution}).}
@@ -254,7 +256,10 @@ Both corpora are channel-matched first: every track, real or generated, is
 decoded, resampled to one rate per corpus ($16$\,kHz on FakeMusicCaps, $24$\,kHz
 on SONICS), loudness-normalised to $-23$\,LUFS (loudness units relative to full
 scale) and capped at a common duration ($9$\,s and $120$\,s), matched over the full
-corpus rather than a split. SONICS additionally passes a shared $64$\,kb/s MP3
+% src: audio_preprocessing.level_match, hp_hz=20.0, trim_silence_dbfs=-60.0
+corpus rather than a split; each track is then high-pass filtered at $20$\,Hz to
+remove DC drift and trimmed of leading and trailing silence below $-60$\,dBFS.
+SONICS additionally passes a shared $64$\,kb/s MP3
 stage, the fake class's own format and the origin of that corpus's $7.35$\,kHz band
 edge; FakeMusicCaps needs none. \S\ref{sec:confounds} shows why this is not
 optional. SONICS supplies three Suno \texttt{chirp} and two Udio families against
@@ -403,8 +408,8 @@ nothing survives above $8$\,kHz whatever container rate the chain of
 $44.1$\,kHz instead.
 % src: nmf_{fmc,sonics}_FULL/nmf_peak_auc_lvl.csv, bins7167 / bins4779
 With the band re-derived for the lower rate the method reaches
-Table~\ref{tab:boundary}'s headline, so the cutoff is survivable and this family can
-be evaluated on the corpora the field actually uses. Their published descriptor
+Table~\ref{tab:boundary}'s headline, so the cutoff is survivable. Their published
+descriptor
 transfers essentially unchanged: at its $4458$ dimensions, and at their physical
 % src: nmf_{fmc,sonics}_binsweep/nmf_peak_auc_lvl.csv, bins4458/2600/1500/1000/445
 resolution of ${\approx}2.7$\,Hz per bin, we measure within $0.010$ of the headline;
@@ -438,7 +443,8 @@ spectrum from which a five-bin running median is subtracted, removing the spectr
 envelope and leaving the narrow peaks; $e$ denotes that residual above $1$\,kHz. The
 median replaces \S\ref{sec:method}'s clipped hull, which saturates teeth above
 $5$\,dB where an autocorrelation peak needs their amplitude. Write $\mathcal{F}$ for
-the discrete Fourier transform and $\tilde{e} = e - \bar{e}$ for the centred residual.
+the discrete Fourier transform and $\tilde{e} = e - \operatorname{mean}(e)$ for the
+residual after its mean is removed.
 By the Wiener--Khinchin identity \cite{wiener1930harmonic} the autocorrelation
 \emph{along frequency} is the inverse transform of the power spectrum,
 $\rho_e(\tau) = r(\tau)/r(0)$ with $r = \mathcal{F}^{-1}\{|\mathcal{F}\tilde{e}|^{2}\}$,
@@ -499,9 +505,9 @@ reads $0.586$ and $0.579$, and no margin is tied at $0$.
 Its gate profile is the comb statistic's own, and the
 % src: c10_h4_{fmc,sonics}/recon_pairs.csv (ledger R27.46, R27.51)
 % src: c10_sonics/, comb_recon_control/ (ledger K1) for the ablation's own pass
-content-identical control passes on both corpora: within pairs from one source a
-transposed-convolution codec \cite{defossez2023encodec} scores above its own source on
-$93$--$98\%$ of pairs against $47$--$58\%$ for phase-only reconstruction, at chance on
+content-identical control passes on both corpora: a transposed-convolution codec
+\cite{defossez2023encodec} scores above its own source on $93$--$98\%$ of pairs
+against $47$--$58\%$ for phase-only reconstruction, at chance on
 FakeMusicCaps and barely detectable on SONICS at a median shift $33$--$40\times$ below
 the codec's, so the score responds to deconvolution and not to re-synthesis. On Udio
 it converts an inversion into a miss, a weaker outcome: three statistics agree Udio
@@ -511,8 +517,8 @@ leaves no comb in the analysed band.
 \label{sec:deployment} At a $4.7\%$ false-positive rate the
 % src: analysis_nmf_sonics_FULL/operating_points.csv, q=0.95, n_eval_reals=6361
 dictionary score on SONICS recalls $67.4\%$ of generated tracks, a precision of
-$0.127$ at a $1\%$ base rate. That ceiling belongs to the base rate, not the
-detector, and is better stated as
+$0.127$ at a $1\%$ base rate. That ceiling belongs to the base rate, not the detector,
+and is better read as
 % src: fpr_fma_h4/ precision-at-prevalence, inverted (ledger R27.89)
 a requirement: precision $0.9$ needs a prevalence near $6\%$ at $q{=}0.999$ or $30\%$
 at $q{=}0.95$. What differs between detectors is how a threshold \emph{travels}.
@@ -580,8 +586,8 @@ The prior is also a scope limit: it assumes a strided transposed-convolution
 decoder, so a synthesiser without one leaves no comb to find, and pitch-shift, which
 resamples and moves $\Delta$ off all six candidates, drives the score \emph{below}
 chance ($0.4665$) rather than merely degrading it. A log-frequency axis
-\cite{dugelay2026improved}, on which that shift is a translation, is the obvious
-repair, untested here.
+\cite{dugelay2026improved}, a constant-Q transform for instance, on which that shift
+is a translation, is the obvious repair, untested here.
 
 \noindent\textbf{Future work.} \cite{afchar2026finding} report Udio among their
 best detected at $44.1$\,kHz, which with \S\ref{sec:detector} predicts its comb
