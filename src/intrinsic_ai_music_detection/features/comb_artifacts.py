@@ -887,7 +887,7 @@ def comb_prior_harmonic_null(
     precisely the set of lags where a real decoder could have put energy.
 
     The result has both properties for the first time: **441 lags at M=4 on
-    FakeMusicCaps and 253 on SONICS** (3-6x the ratio lattice, comparable to the decoys)
+    FakeMusicCaps and 252 on SONICS** (CORRECTED from 253) (3-6x the ratio lattice, comparable to the decoys)
     with **zero true-comb harmonics inside**, and it is still fully deterministic -- no
     seed, no draws, no grid spacing.
 

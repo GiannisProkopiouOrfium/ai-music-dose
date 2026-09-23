@@ -3004,7 +3004,7 @@ recur beyond it.
 | 24 random decoys | yes, 4/10 | yes | 275 / 220 | no |
 | lattice | **no** | yes | 74 / 52 | **yes** |
 | union | **no** | yes | 242 / 179 | no |
-| **harmonic-protected** | **no** | **no** | **441 / 253** | **yes** |
+| **harmonic-protected** | **no** | **no** | **441 / 252** (CORRECTED 2026-09-23 from 253: `n_lags` at bin 24000/16384 is 252, as R27.43 records) | **yes** |
 
 **The first construction with both properties.** `tol_bins = 1` is forced by rounding
 rather than fitted -- the analysis lattice cannot place `k*Delta` on an exact integer bin

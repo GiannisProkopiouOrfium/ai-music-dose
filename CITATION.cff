@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this code or the measurements in it, please cite the paper below."
-title: "Label-Free or Zero-Shot? The Transductive Dose of an AI-Music Detector, and a Detector Without One"
+title: "Label-Free or Zero-Shot? The Transductive Dose of an AI Music Detector and a Detector Without One"
 abstract: >-
   Code, confound-gate battery and full provenance record for a study of
   label-free AI-generated-music detection. Measures the transductive dose a
@@ -12,6 +12,7 @@ license: MIT
 authors:
   - family-names: Prokopiou
     given-names: Ioannis
+    email: gian.prokopiou@aueb.gr
     affiliation: "Athens University of Economics and Business; Orfium"
   - family-names: Vikatos
     given-names: Pantelis

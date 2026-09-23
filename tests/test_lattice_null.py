@@ -441,7 +441,7 @@ class TestTheHarmonicProtectedNull:
     @pytest.mark.parametrize("name,bin_hz,n_bins", GEOMETRIES)
     def test_it_is_much_larger_than_the_ratio_lattice(self, name, bin_hz, n_bins):
         # Null SIZE is what cancels the residual smoothness that inverts Udio. The
-        # ratio lattice keeps 52-74 lags at M=4; this keeps 253-441.
+        # ratio lattice keeps 52-74 lags at M=4; this keeps 252-441.
         r = _true_comb(n_bins, 100.0, bin_hz, seed=42)
         h = comb_prior_harmonic_null(r, bin_hz=bin_hz, n_harm=4)["n_lags"]
         l = comb_prior_lattice_null(r, bin_hz=bin_hz, n_harm=4)["n_lags"]

@@ -4,7 +4,7 @@
 % PROVENANCE DISCIPLINE. Every number below carries a "% src:" comment naming
 % the CSV it was read from and, where one exists, its confound-gate status.
 % reports/provenance_ledger.md is the authority; if a number is not there, it
-% is not here. Eight claims were withdrawn during this project, every one
+% is not here. Nine claims were withdrawn during this project, every one
 % because a value or a criterion was carried forward instead of re-derived.
 % The eighth was ours about a PRIOR paper: we had recorded its descriptor
 % dimension as 445 where the published value is 4458, and had built a
@@ -12,8 +12,8 @@
 % =============================================================================
 \documentclass{article}
 \usepackage{spconf,amsmath,amssymb,graphicx,booktabs,hyperref}
-% xurl lets the one long URL in the bibliography break across lines; without it
-% the Deezer newsroom reference sets 45pt over the column.
+% xurl lets long URLs (the code URL in the text) break across lines rather than
+% overrun the column.
 \usepackage{xurl}
 
 \hypersetup{colorlinks=true,allcolors=black,pdfborder={0 0 0}}
@@ -259,7 +259,9 @@ SONICS additionally passes a shared $64$\,kb/s MP3
 stage so both classes share its fakes' codec, the origin of its $7.35$\,kHz band edge;
 FakeMusicCaps needs none. \S\ref{sec:confounds} shows why this is not
 optional. SONICS supplies three Suno \texttt{chirp} and two Udio families against
-$6{,}361$ reals;
+% src: 59,280 = 12,722 real + 46,558 generated (ledger I2, O4). CORRECTED
+%      2026-09-23: read "6,361", the held-out half, beside FMC's full 5,355.
+$12{,}722$ reals;
 FakeMusicCaps supplies MusicGen, AudioLDM2, MusicLDM, Mustango and Stable Audio Open
 against $5{,}355$.
 
@@ -364,7 +366,9 @@ confidence interval (CI) with a DeLong test \cite{delong1988comparing}. A nuisan
 % src: gate_nmf_FULL_c10/, gate_comb_fmc_c9/, gate_{nmf,comb}_sonics_FULL_120s/
 descriptor fails if it separates the classes above a criterion of $0.60$ fixed in
 advance. Nine gates pass; channel and level fail marginally, at $0.61$--$0.63$ on
-both corpora and $32{,}960$ tracks, and bandwidth-matched twins bound the residual
+% src: gate_h4_fmc n = 32,960 + gate_h4_sonics n = 59,280 (ledger R27.45, O4).
+%      CORRECTED 2026-09-23: read "32,960", which is FakeMusicCaps alone.
+both corpora and $92{,}240$ tracks, and bandwidth-matched twins bound the residual
 effect to score shifts of $-0.010$ and $-0.003$. On the NMF arm decoder-spacing
 concentration is not applicable, a skip rather than one of the nine.
 
@@ -468,7 +472,9 @@ of the published fundamentals $21.5$, $50$, $75$, $86.1$, $93.75$ and $100$\,Hz 
 a $40$\,Hz floor, and $\mathcal{N} = \{\tau : 40 \le \tau b \le M{\times}150\}
 \setminus \bigcup_{\Delta,k} \{\mathrm{round}(k\Delta/b) \pm 1\}$, the ceiling
 following from $150$\,Hz being the highest plausible decoder fundamental; at
-$M{=}4$ this leaves $441$ admissible lags on FakeMusicCaps and $253$ on SONICS.
+$M{=}4$ this leaves $441$ admissible lags on FakeMusicCaps and $252$ on SONICS.
+% src: comb_prior_harmonic_null(n_harm=4) at bin 24000/16384 returns n_lags 252
+%      (ledger R27.43). CORRECTED 2026-09-23 from 253, a docstring slip.
 % src: hi_hz = 150 (R27.61); probe_M_{fmc,sonics}/ (R27.71, R27.76, R27.88);
 %      comb_fmc_FULL/, fusion_sonics_FULL_rs15k_twosided/ (prior and null removed)
 % src: probe floor 40 -> 20 Hz (ledger R27.62, R27.88)
